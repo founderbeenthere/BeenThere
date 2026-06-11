@@ -1,18 +1,18 @@
 import { useNavigate } from 'react-router-dom'
 
 const STEPS = [
-  { n: '01', title: 'Upload a photo',     desc: 'Snap or pick any travel shot from your camera roll.' },
-  { n: '02', title: 'We find the place',  desc: 'AI reads the image and pins it to the right spot on the map.' },
-  { n: '03', title: 'Your moment',        desc: 'A polaroid lands on the wall — exactly where you were.' },
-  { n: '04', title: 'Build your wall',    desc: 'Add more trips. Watch your personal travel gallery grow.' },
-  { n: '05', title: 'Save & relive',      desc: 'Revisit your wall any time. Print it. Share it.' },
+  { n: '01', title: 'Upload a photo',    desc: 'Snap or pick any travel shot from your camera roll.' },
+  { n: '02', title: 'We find the place', desc: 'AI reads the image and pins it to the right spot on the map.' },
+  { n: '03', title: 'Your moment',       desc: 'A polaroid lands on the wall — exactly where you were.' },
+  { n: '04', title: 'Build your wall',   desc: 'Add more trips. Watch your personal travel gallery grow.' },
+  { n: '05', title: 'Save & relive',     desc: 'Revisit your wall any time. Print it. Share it.' },
 ]
 
 const BENEFITS = [
-  { icon: '🔓', title: 'No sign up',         desc: 'Start instantly — no account needed.' },
-  { icon: '🔒', title: 'Private',             desc: 'Your wall lives on your device by default.' },
-  { icon: '🔗', title: 'Share your wall',     desc: 'Generate a link and show the world. (coming soon)' },
-  { icon: '🖨️', title: 'Print your wall',    desc: 'Export as a high-res poster. (coming soon)' },
+  { icon: '🔓', title: 'No sign up',      desc: 'Start instantly — no account needed.' },
+  { icon: '🔒', title: 'Private',          desc: 'Your wall lives on your device by default.' },
+  { icon: '🔗', title: 'Share your wall', desc: 'Generate a link and show the world. (coming soon)' },
+  { icon: '🖨️', title: 'Print your wall', desc: 'Export as a high-res poster. (coming soon)' },
 ]
 
 export default function LandingPage() {
@@ -22,8 +22,7 @@ export default function LandingPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#1a0d04',
-        color: '#F5EDE0',
+        background: '#F5EDE0',
         fontFamily: "'Playfair Display', serif",
         overflowX: 'hidden',
       }}
@@ -59,7 +58,7 @@ export default function LandingPage() {
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(to bottom, rgba(26,13,4,0) 40%, rgba(26,13,4,0.85) 100%)',
+            background: 'linear-gradient(to bottom, rgba(26,13,4,0) 40%, rgba(26,13,4,0.88) 100%)',
           }}
         />
         <div style={{ position: 'relative', padding: '0 40px 48px', maxWidth: 640 }}>
@@ -91,13 +90,13 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section style={{ padding: '64px 32px 48px', maxWidth: 1080, margin: '0 auto' }}>
+      <section style={{ padding: '64px 32px 56px', maxWidth: 1080, margin: '0 auto' }}>
         <h2
           style={{
-            fontSize: 13,
+            fontSize: 12,
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
-            color: '#8a6a48',
+            color: '#9a7a58',
             marginBottom: 32,
             fontFamily: 'sans-serif',
             fontWeight: 600,
@@ -108,37 +107,24 @@ export default function LandingPage() {
         <div
           style={{
             display: 'flex',
-            gap: 24,
+            gap: 16,
             overflowX: 'auto',
             paddingBottom: 8,
           }}
         >
-          {STEPS.map((step, i) => (
+          {STEPS.map(step => (
             <div
               key={step.n}
               style={{
                 flex: '0 0 auto',
-                width: 180,
-                padding: '24px 20px',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(212,165,116,0.12)',
+                width: 176,
+                padding: '24px 18px',
+                background: '#fff',
+                border: '1px solid #e0d0bc',
                 borderRadius: 4,
-                position: 'relative',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
               }}
             >
-              {/* Connector line */}
-              {i < STEPS.length - 1 && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: -24,
-                    top: '50%',
-                    width: 24,
-                    height: 1,
-                    background: 'rgba(212,165,116,0.2)',
-                  }}
-                />
-              )}
               <div
                 style={{
                   fontSize: 11,
@@ -153,11 +139,11 @@ export default function LandingPage() {
               </div>
               <div
                 style={{
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: 700,
-                  color: '#F5EDE0',
+                  color: '#2a1205',
                   marginBottom: 8,
-                  lineHeight: 1.2,
+                  lineHeight: 1.25,
                 }}
               >
                 {step.title}
@@ -165,9 +151,9 @@ export default function LandingPage() {
               <div
                 style={{
                   fontSize: 12,
-                  color: '#9a7a58',
+                  color: '#7a5a38',
                   fontFamily: 'sans-serif',
-                  lineHeight: 1.5,
+                  lineHeight: 1.55,
                 }}
               >
                 {step.desc}
@@ -180,49 +166,65 @@ export default function LandingPage() {
       {/* Benefits */}
       <section
         style={{
-          padding: '16px 32px 64px',
-          maxWidth: 1080,
-          margin: '0 auto',
+          background: '#ede4d6',
+          padding: '48px 32px 56px',
         }}
       >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 20,
-          }}
-        >
-          {BENEFITS.map(b => (
-            <div
-              key={b.title}
-              style={{
-                padding: '20px 20px',
-                borderTop: '1px solid rgba(212,165,116,0.15)',
-              }}
-            >
-              <div style={{ fontSize: 24, marginBottom: 10 }}>{b.icon}</div>
+        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+          <h2
+            style={{
+              fontSize: 12,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: '#9a7a58',
+              marginBottom: 32,
+              fontFamily: 'sans-serif',
+              fontWeight: 600,
+            }}
+          >
+            Why BeenThere
+          </h2>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 24,
+            }}
+          >
+            {BENEFITS.map(b => (
               <div
+                key={b.title}
                 style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: '#F5EDE0',
-                  marginBottom: 6,
+                  padding: '20px',
+                  background: '#fff',
+                  border: '1px solid #e0d0bc',
+                  borderRadius: 4,
                 }}
               >
-                {b.title}
+                <div style={{ fontSize: 22, marginBottom: 10 }}>{b.icon}</div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: '#2a1205',
+                    marginBottom: 6,
+                  }}
+                >
+                  {b.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#7a5a38',
+                    fontFamily: 'sans-serif',
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {b.desc}
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: '#9a7a58',
-                  fontFamily: 'sans-serif',
-                  lineHeight: 1.5,
-                }}
-              >
-                {b.desc}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
@@ -230,14 +232,14 @@ export default function LandingPage() {
       <section
         style={{
           textAlign: 'center',
-          padding: '16px 32px 80px',
-          borderTop: '1px solid rgba(212,165,116,0.1)',
+          padding: '56px 32px 80px',
+          background: '#F5EDE0',
         }}
       >
         <button
           onClick={() => navigate('/')}
           style={{
-            padding: '16px 48px',
+            padding: '16px 52px',
             background: '#E8A050',
             border: 'none',
             borderRadius: 3,
@@ -247,16 +249,16 @@ export default function LandingPage() {
             fontFamily: "'Playfair Display', serif",
             letterSpacing: '0.02em',
             cursor: 'pointer',
-            boxShadow: '0 4px 20px rgba(232,160,80,0.3)',
+            boxShadow: '0 4px 20px rgba(232,160,80,0.35)',
           }}
         >
           Start your map
         </button>
         <p
           style={{
-            marginTop: 16,
+            marginTop: 14,
             fontSize: 12,
-            color: '#6a4a28',
+            color: '#9a7a58',
             fontFamily: 'sans-serif',
           }}
         >
