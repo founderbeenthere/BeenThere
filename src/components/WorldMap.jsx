@@ -297,7 +297,7 @@ export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTri
             ? `url('/assets/HERO_UPDATED_TRAVEL_WALL_CONCEPT_16_9_LUCE_DELLA_SERA.png')`
             : `url('/assets/HERO_UPDATED_TRAVEL_WALL_CONCEPT_16_9_LUCE_DELLA_SERA_SENZA_FOTO.png')`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center top',
           backgroundRepeat: 'no-repeat',
           position: 'relative',
           transformOrigin: 'center center',
