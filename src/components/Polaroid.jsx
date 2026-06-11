@@ -1,8 +1,8 @@
 // Dimensions — keep in sync with the rendered card
-const CARD_W     = 90   // outer width px
-const FRAME      = 6    // white border on all sides
-const PHOTO_H    = 65   // photo area height
-const CAPTION_H  = 20   // bottom white strip for caption
+const CARD_W     = 70   // outer width px
+const FRAME      = 4    // white border on all sides
+const PHOTO_H    = 50   // photo area height
+const CAPTION_H  = 16   // bottom white strip for caption
 const CARD_H     = FRAME + PHOTO_H + CAPTION_H  // 91
 const TIP_H      = 9    // triangle height (= half-base)
 
