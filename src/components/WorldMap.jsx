@@ -293,11 +293,12 @@ export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTri
         style={{
           width: '100%',
           height: '100%',
-          backgroundImage: `url('/assets/HERO_UPDATED_TRAVEL_WALL_CONCEPT.png')`,
-          backgroundSize: 'contain',
+          backgroundImage: trips.length === 0
+            ? `url('/assets/HERO_UPDATED_TRAVEL_WALL_CONCEPT_16_9_LUCE_DELLA_SERA.png')`
+            : `url('/assets/HERO_UPDATED_TRAVEL_WALL_CONCEPT_16_9_LUCE_DELLA_SERA_SENZA_FOTO.png')`,
+          backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          backgroundColor: '#F2E4CC',
           position: 'relative',
           transformOrigin: 'center center',
           transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
