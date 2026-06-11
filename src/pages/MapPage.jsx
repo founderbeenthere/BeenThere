@@ -1,17 +1,12 @@
 import { useState } from 'react'
 import WorldMap from '../components/WorldMap'
 import AddTripModal from '../components/AddTripModal'
-import HamburgerMenu from '../components/HamburgerMenu'
 import { useTrips } from '../hooks/useTrips'
 
 export default function MapPage() {
   const { trips, loading, addTrip, deleteTrip } = useTrips()
-  const [pendingCoords, setPendingCoords] = useState(null)
+  const [showModal, setShowModal] = useState(false)
   const [lastAddedTripId, setLastAddedTripId] = useState(null)
-
-  function handleMapClick({ x, y }) {
-    setPendingCoords({ x, y })
-  }
 
   async function handleAddTrip(tripData) {
     try {
@@ -22,7 +17,7 @@ export default function MapPage() {
     } catch (err) {
       console.error('Errore aggiunta viaggio:', err)
     } finally {
-      setPendingCoords(null)
+      setShowModal(false)
     }
   }
 
@@ -35,31 +30,67 @@ export default function MapPage() {
   }
 
   return (
-    <div className="w-full overflow-hidden" style={{ height: '100vh', background: '#1e0e02' }}>
+    <div className="w-full overflow-hidden" style={{ height: '100vh' }}>
       <WorldMap
         trips={trips}
-        onMapClick={handleMapClick}
         onDeleteTrip={handleDeleteTrip}
         lastAddedTripId={lastAddedTripId}
-        disabled={!!pendingCoords}
+        disabled={showModal}
       />
 
-      <HamburgerMenu />
+      {/* Floating + button — sole action */}
+      {!showModal && (
+        <button
+          onClick={() => setShowModal(true)}
+          style={{
+            position: 'fixed',
+            bottom: 32,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 40,
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: '#E8A050',
+            border: '3px solid rgba(255,255,255,0.85)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+            color: '#fff',
+            fontSize: 28,
+            lineHeight: 1,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          aria-label="Aggiungi luogo"
+        >
+          +
+        </button>
+      )}
 
       {loading && (
         <div
-          className="fixed bottom-4 left-4 text-xs px-3 py-2 rounded z-50"
-          style={{ background: 'rgba(59,31,10,0.85)', color: '#F5EDE0' }}
+          style={{
+            position: 'fixed',
+            bottom: 16,
+            left: 16,
+            fontSize: 11,
+            padding: '4px 10px',
+            borderRadius: 4,
+            background: 'rgba(59,31,10,0.8)',
+            color: '#F5EDE0',
+            zIndex: 50,
+          }}
         >
           Caricamento...
         </div>
       )}
 
-      {pendingCoords && (
+      {showModal && (
         <AddTripModal
-          coords={pendingCoords}
+          coords={{ x: 50, y: 50 }}
           onConfirm={handleAddTrip}
-          onCancel={() => setPendingCoords(null)}
+          onCancel={() => setShowModal(false)}
         />
       )}
     </div>

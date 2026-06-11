@@ -293,7 +293,7 @@ export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTri
         style={{
           width: '100%',
           height: '100%',
-          backgroundImage: `url('/assets/frame1.webp')`,
+          backgroundImage: `url('/assets/HERO_LIVING_ROOM_REFERENCE.png')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           position: 'relative',

@@ -1,30 +1,23 @@
-// Dimensions — keep in sync with the rendered card
-const CARD_W     = 70   // outer width px
-const FRAME      = 4    // white border on all sides
-const PHOTO_H    = 50   // photo area height
-const CAPTION_H  = 16   // bottom white strip for caption
-const CARD_H     = FRAME + PHOTO_H + CAPTION_H  // 91
-const TIP_H      = 9    // triangle height (= half-base)
+const CARD_W    = 72
+const FRAME     = 4
+const PHOTO_H   = 56
+const CAPTION_H = 20
+const CARD_H    = FRAME + PHOTO_H + CAPTION_H  // 80
+const PIN_D     = 8
+const PIN_R     = PIN_D / 2                    // 4
 
 function rotation(id) {
   const seed = String(id ?? '').split('').reduce((s, c) => s + c.charCodeAt(0), 0)
-  return (seed % 11) - 5  // -5..+5 deg, deterministic
+  const magnitude = 3 + (seed % 3)         // 3, 4 or 5 degrees
+  const direction = seed % 2 === 0 ? 1 : -1
+  return direction * magnitude
 }
 
 export default function Polaroid({ trip, onSelect }) {
-  // pin on right side of screen → card opens left (tip on right edge of card)
-  const openLeft = (trip.map_x ?? 50) > 60
-
-  // tipX = distance from card's left edge to the tip apex
-  const tipX = openLeft ? CARD_W : 0
-
-  // Position card group so tip apex sits exactly at local (0,0) = pin center
-  const groupLeft = -tipX
-  const groupTop  = -(CARD_H + TIP_H)
-
   const rot = rotation(trip.id)
 
   return (
+    // Geographic anchor — pin center sits here
     <div
       style={{
         position: 'absolute',
@@ -34,49 +27,50 @@ export default function Polaroid({ trip, onSelect }) {
         pointerEvents: 'none',
       }}
     >
-      {/* Geographic dot pin — center at local (0,0) */}
+      {/* Rotate the whole assembly around the geographic point (0,0) */}
       <div
         style={{
-          position: 'absolute',
-          left: 0, top: 0,
-          transform: 'translate(-50%, -50%)',
-          width: 10, height: 10,
-          borderRadius: '50%',
-          background: '#C87828',
-          border: '2px solid #fff',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
-          cursor: 'pointer',
-          pointerEvents: 'auto',
-          zIndex: 2,
-        }}
-        onClick={e => { e.stopPropagation(); onSelect?.(trip) }}
-      />
-
-      {/* Card + tip — tip apex fixed at (0,0) even after rotation */}
-      <div
-        style={{
-          position: 'absolute',
-          left: groupLeft,
-          top:  groupTop,
-          transformOrigin: `${tipX}px ${CARD_H + TIP_H}px`,
+          transformOrigin: '0 0',
           transform: `rotate(${rot}deg)`,
-          cursor: 'pointer',
-          pointerEvents: 'auto',
         }}
-        onClick={e => { e.stopPropagation(); onSelect?.(trip) }}
       >
-        {/* Polaroid card */}
+        {/* Orange anchor pin — centered at (0,0) */}
         <div
           style={{
-            width: CARD_W,
+            position: 'absolute',
+            left: -PIN_R,
+            top:  -PIN_R,
+            width:  PIN_D,
+            height: PIN_D,
+            borderRadius: '50%',
+            background: '#E8A050',
+            border: '1.5px solid rgba(255,255,255,0.75)',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+            cursor: 'pointer',
+            pointerEvents: 'auto',
+            zIndex: 2,
+          }}
+          onClick={e => { e.stopPropagation(); onSelect?.(trip) }}
+        />
+
+        {/* Polaroid card — hangs below the pin */}
+        <div
+          style={{
+            position: 'absolute',
+            left: -(CARD_W / 2),
+            top:  PIN_R + 2,
+            width:  CARD_W,
             height: CARD_H,
             background: '#fff',
+            boxShadow: '2px 4px 8px rgba(0,0,0,0.25)',
             boxSizing: 'border-box',
             padding: `${FRAME}px ${FRAME}px 0`,
-            boxShadow: '2px 4px 12px rgba(0,0,0,0.3)',
+            cursor: 'pointer',
+            pointerEvents: 'auto',
           }}
+          onClick={e => { e.stopPropagation(); onSelect?.(trip) }}
         >
-          {/* Photo / emoji placeholder */}
+          {/* Photo area */}
           <div
             style={{
               width: '100%',
@@ -96,7 +90,7 @@ export default function Polaroid({ trip, onSelect }) {
                 draggable={false}
               />
             ) : (
-              <span style={{ fontSize: 28, lineHeight: 1 }}>{trip.emoji || '📍'}</span>
+              <span style={{ fontSize: 24, lineHeight: 1 }}>{trip.emoji || '📍'}</span>
             )}
           </div>
 
@@ -107,13 +101,12 @@ export default function Polaroid({ trip, onSelect }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              overflow: 'hidden',
             }}
           >
             <span
               style={{
-                fontFamily: "'Caveat', cursive",
-                fontSize: 11,
+                fontFamily: "'Playfair Display', serif",
+                fontSize: 9,
                 color: '#3d2009',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -125,27 +118,6 @@ export default function Polaroid({ trip, onSelect }) {
             </span>
           </div>
         </div>
-
-        {/* Triangle tip — outer (border) */}
-        <div style={{
-          position: 'absolute',
-          bottom: -TIP_H,
-          left: tipX - TIP_H,
-          width: 0, height: 0,
-          borderLeft:  `${TIP_H}px solid transparent`,
-          borderRight: `${TIP_H}px solid transparent`,
-          borderTop:   `${TIP_H}px solid rgba(0,0,0,0.15)`,
-        }} />
-        {/* Triangle tip — inner (white fill) */}
-        <div style={{
-          position: 'absolute',
-          bottom: -(TIP_H - 1),
-          left: tipX - (TIP_H - 1),
-          width: 0, height: 0,
-          borderLeft:  `${TIP_H - 1}px solid transparent`,
-          borderRight: `${TIP_H - 1}px solid transparent`,
-          borderTop:   `${TIP_H - 1}px solid #fff`,
-        }} />
       </div>
     </div>
   )
