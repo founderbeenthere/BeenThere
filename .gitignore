@@ -26,3 +26,8 @@ dist-ssr
 # Env secrets
 .env.local
 .env.*.local
+
+# Dev scripts and generated output
+make-icons.mjs
+screenshot.mjs
+screenshot.png
