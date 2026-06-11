@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --color-wood-50: #fdf8f0;
+  --color-wood-100: #f5e6c8;
+  --color-wood-200: #e8c99a;
+  --color-wood-300: #d4a574;
+  --color-wood-400: #c08050;
+  --color-wood-500: #a0622e;
+  --color-wood-600: #7d4a1e;
+  --color-wood-700: #5c3412;
+  --color-wood-800: #3d2009;
+  --color-wood-900: #1e0e02;
+
+  --color-polaroid-bg: #f8f4ef;
+  --color-polaroid-border: #e8ddd0;
+
+  --font-handwriting: 'Caveat', cursive;
+  --font-display: 'Playfair Display', serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: system-ui, sans-serif;
+    background-color: #3d2009;
+    color: #1e0e02;
+    overflow: hidden;
+  }
+
+  #root {
+    width: 100%;
+    height: 100dvh;
+  }
+}
