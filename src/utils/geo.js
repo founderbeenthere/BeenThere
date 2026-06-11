@@ -6,7 +6,7 @@ const IMG_SIZE = 1080
 const CALIBRATION = [
   { lat:  49.3, lng: -123.1, px: 266, py: 358 }, // Vancouver
   { lat: -33.9, lng:   18.4, px: 597, py: 597 }, // Cape Town
-  { lat:  35.6762, lng:  139.6503, px: 874, py: 388 }, // Tokyo
+  { lat:  35.6762, lng:  139.6503, px: 888, py: 391 }, // Tokyo
   { lat:  55.7, lng:   12.6, px: 592, py: 342 }, // Copenhagen
   { lat: -37.8, lng:  144.9, px: 897, py: 614 }, // Melbourne
 ]
