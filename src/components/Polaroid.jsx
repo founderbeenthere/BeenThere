@@ -1,146 +1,150 @@
-import { useState } from 'react'
+// Dimensions — keep in sync with the rendered card
+const CARD_W     = 90   // outer width px
+const FRAME      = 6    // white border on all sides
+const PHOTO_H    = 65   // photo area height
+const CAPTION_H  = 20   // bottom white strip for caption
+const CARD_H     = FRAME + PHOTO_H + CAPTION_H  // 91
+const TIP_H      = 9    // triangle height (= half-base)
 
-const CARD_W = 90
-const CARD_BODY_H = 112 // 6 top + 70 photo + 4 gap + ~14 caption + 18 bottom
-const TIP_H = 10        // triangle height (= half-width)
+function rotation(id) {
+  const seed = String(id ?? '').split('').reduce((s, c) => s + c.charCodeAt(0), 0)
+  return (seed % 11) - 5  // -5..+5 deg, deterministic
+}
 
 export default function Polaroid({ trip, onSelect }) {
-  const [hovered, setHovered] = useState(false)
+  // pin on right side of screen → card opens left (tip on right edge of card)
+  const openLeft = (trip.map_x ?? 50) > 60
 
-  const rotation = trip.rotation ?? (((trip.id?.charCodeAt(0) ?? 0) % 21) - 10)
-
-  // pin is on the right side of the screen → open card to the left (tip on right edge)
-  // pin is on the left  side of the screen → open card to the right (tip on left edge)
-  const openLeft = (trip.map_x ?? 50) > 55
-
-  // tipX = horizontal distance from card's left edge to the tip apex
+  // tipX = distance from card's left edge to the tip apex
   const tipX = openLeft ? CARD_W : 0
 
-  // Position the card group so the tip apex sits at local (0, 0)
-  // (the wrapper div is at map_x%, map_y% — that's also where the pin dot center is)
+  // Position card group so tip apex sits exactly at local (0,0) = pin center
   const groupLeft = -tipX
-  const groupTop = -(CARD_BODY_H + TIP_H)
+  const groupTop  = -(CARD_H + TIP_H)
 
-  // Rotation origin: the tip apex within the group's own coordinate system
-  const rotOriginX = `${tipX}px`
-  const rotOriginY = `${CARD_BODY_H + TIP_H}px`
+  const rot = rotation(trip.id)
 
   return (
     <div
       style={{
         position: 'absolute',
         left: `${trip.map_x}%`,
-        top: `${trip.map_y}%`,
-        zIndex: hovered ? 50 : 10,
-        pointerEvents: 'none', // children handle events individually
+        top:  `${trip.map_y}%`,
+        zIndex: 10,
+        pointerEvents: 'none',
       }}
     >
-      {/* Geographic pin dot — centered at (0,0) */}
+      {/* Geographic dot pin — center at local (0,0) */}
       <div
         style={{
           position: 'absolute',
-          left: 0,
-          top: 0,
+          left: 0, top: 0,
           transform: 'translate(-50%, -50%)',
-          width: 10,
-          height: 10,
+          width: 10, height: 10,
           borderRadius: '50%',
           background: '#C87828',
-          border: '2px solid white',
+          border: '2px solid #fff',
           boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
           cursor: 'pointer',
           pointerEvents: 'auto',
           zIndex: 2,
         }}
-        onClick={e => { e.stopPropagation(); if (onSelect) onSelect(trip) }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        onClick={e => { e.stopPropagation(); onSelect?.(trip) }}
       />
 
-      {/* Polaroid card + tip, tip apex anchored at (0,0) */}
+      {/* Card + tip — tip apex fixed at (0,0) even after rotation */}
       <div
         style={{
           position: 'absolute',
           left: groupLeft,
-          top: groupTop,
-          transformOrigin: `${rotOriginX} ${rotOriginY}`,
-          transform: `rotate(${rotation}deg) scale(${hovered ? 1.08 : 1})`,
-          transition: 'transform 0.2s ease',
-          filter: hovered
-            ? 'drop-shadow(0 10px 24px rgba(0,0,0,0.6))'
-            : 'drop-shadow(0 4px 10px rgba(0,0,0,0.38))',
+          top:  groupTop,
+          transformOrigin: `${tipX}px ${CARD_H + TIP_H}px`,
+          transform: `rotate(${rot}deg)`,
           cursor: 'pointer',
           pointerEvents: 'auto',
         }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        onClick={e => { e.stopPropagation(); if (onSelect) onSelect(trip) }}
+        onClick={e => { e.stopPropagation(); onSelect?.(trip) }}
       >
-        {/* Card body */}
+        {/* Polaroid card */}
         <div
           style={{
             width: CARD_W,
-            background: '#f8f4ef',
-            padding: '6px 6px 18px',
-            border: '1px solid #d4c4b0',
+            height: CARD_H,
+            background: '#fff',
+            boxSizing: 'border-box',
+            padding: `${FRAME}px ${FRAME}px 0`,
+            boxShadow: '2px 4px 12px rgba(0,0,0,0.3)',
           }}
         >
-          {/* Photo */}
-          <div style={{ width: '100%', height: 70, background: '#c8b89a', overflow: 'hidden' }}>
+          {/* Photo / emoji placeholder */}
+          <div
+            style={{
+              width: '100%',
+              height: PHOTO_H,
+              overflow: 'hidden',
+              background: '#d8cfc4',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             {trip.photo_url ? (
               <img
                 src={trip.photo_url}
                 alt={trip.place_name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 draggable={false}
               />
             ) : (
-              <div style={{
-                width: '100%', height: '100%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 24,
-                background: 'linear-gradient(135deg, #c8b89a, #a89070)',
-              }}>
-                {trip.emoji || '📍'}
-              </div>
+              <span style={{ fontSize: 28, lineHeight: 1 }}>{trip.emoji || '📍'}</span>
             )}
           </div>
 
-          {/* Caption */}
-          <div style={{
-            textAlign: 'center',
-            marginTop: 4,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontFamily: "'Caveat', cursive",
-            fontSize: 11,
-            color: '#5c3d1e',
-            lineHeight: 1.2,
-          }}>
-            {trip.place_name}
+          {/* Caption strip */}
+          <div
+            style={{
+              height: CAPTION_H,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'Caveat', cursive",
+                fontSize: 11,
+                color: '#3d2009',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: CARD_W - FRAME * 2,
+              }}
+            >
+              {trip.place_name}
+            </span>
           </div>
         </div>
 
-        {/* Triangle tip — outer (border color) */}
+        {/* Triangle tip — outer (border) */}
         <div style={{
           position: 'absolute',
           bottom: -TIP_H,
           left: tipX - TIP_H,
           width: 0, height: 0,
-          borderLeft: `${TIP_H}px solid transparent`,
+          borderLeft:  `${TIP_H}px solid transparent`,
           borderRight: `${TIP_H}px solid transparent`,
-          borderTop: `${TIP_H}px solid #d4c4b0`,
+          borderTop:   `${TIP_H}px solid rgba(0,0,0,0.15)`,
         }} />
-        {/* Triangle tip — inner (fill color) */}
+        {/* Triangle tip — inner (white fill) */}
         <div style={{
           position: 'absolute',
           bottom: -(TIP_H - 1),
           left: tipX - (TIP_H - 1),
           width: 0, height: 0,
-          borderLeft: `${TIP_H - 1}px solid transparent`,
+          borderLeft:  `${TIP_H - 1}px solid transparent`,
           borderRight: `${TIP_H - 1}px solid transparent`,
-          borderTop: `${TIP_H - 1}px solid #f8f4ef`,
+          borderTop:   `${TIP_H - 1}px solid #fff`,
         }} />
       </div>
     </div>
