@@ -1,86 +1,23 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Polaroid from './Polaroid'
 
-// Wooden decorative icons on oceans
-function WoodPlane({ style }) {
-  return (
-    <svg
-      width="32" height="32" viewBox="0 0 32 32" fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ position: 'absolute', pointerEvents: 'none', ...style }}
-    >
-      <g fill="#7A4020" stroke="#5a2e14" strokeWidth="0.5">
-        {/* fuselage */}
-        <ellipse cx="16" cy="16" rx="12" ry="3.5" transform="rotate(-35 16 16)" />
-        {/* left wing */}
-        <polygon points="16,16 7,22 10,16" />
-        {/* right wing */}
-        <polygon points="16,16 25,10 22,16" />
-        {/* tail */}
-        <polygon points="22,20 26,24 24,20" />
-      </g>
-    </svg>
-  )
-}
-
-function WoodSailboat({ style }) {
-  return (
-    <svg
-      width="32" height="32" viewBox="0 0 32 32" fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ position: 'absolute', pointerEvents: 'none', ...style }}
-    >
-      <g fill="#7A4020" stroke="#5a2e14" strokeWidth="0.6">
-        {/* hull */}
-        <path d="M4 22 Q16 26 28 22 L26 25 Q16 30 6 25 Z" />
-        {/* mast */}
-        <rect x="15" y="8" width="2" height="14" />
-        {/* sail */}
-        <polygon points="16,9 16,22 26,18" opacity="0.85" />
-        {/* small sail */}
-        <polygon points="16,9 16,18 8,15" opacity="0.7" />
-      </g>
-    </svg>
-  )
-}
-
-function HeartPin({ trip, onSelect }) {
+function SmallPin({ trip, onSelect, size }) {
   return (
     <div
       className="absolute"
       style={{
         left: `${trip.map_x}%`,
-        top: `${trip.map_y}%`,
+        top:  `${trip.map_y}%`,
         transform: 'translate(-50%, -50%)',
         zIndex: 15,
-        cursor: 'pointer',
-      }}
-      onClick={e => { e.stopPropagation(); onSelect(trip) }}
-    >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="#E85555" xmlns="http://www.w3.org/2000/svg"
-        style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))' }}>
-        <path d="M8 14s-6-4.35-6-8a4 4 0 0 1 6-3.46A4 4 0 0 1 14 6c0 3.65-6 8-6 8z" />
-      </svg>
-    </div>
-  )
-}
-
-function SmallPin({ trip, onSelect }) {
-  return (
-    <div
-      className="absolute"
-      style={{
-        left: `${trip.map_x}%`,
-        top: `${trip.map_y}%`,
-        transform: 'translate(-50%, -50%)',
-        zIndex: 15,
-        width: '14px',
-        height: '14px',
+        width:  size,
+        height: size,
         borderRadius: '50%',
         background: '#C87828',
         border: '2px solid white',
         boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
         cursor: 'pointer',
+        flexShrink: 0,
       }}
       onClick={e => { e.stopPropagation(); onSelect(trip) }}
     />
@@ -93,7 +30,7 @@ function TripPopup({ trip, onDelete, onClose }) {
       className="absolute z-50"
       style={{
         left: `${trip.map_x}%`,
-        top: `${trip.map_y}%`,
+        top:  `${trip.map_y}%`,
         transform: 'translate(-50%, calc(-100% - 16px))',
         minWidth: '180px',
         maxWidth: '220px',
@@ -105,23 +42,19 @@ function TripPopup({ trip, onDelete, onClose }) {
         fontFamily: "'Playfair Display', serif",
       }}
     >
-      {/* Arrow */}
       <div style={{
         position: 'absolute', bottom: '-7px', left: '50%', transform: 'translateX(-50%)',
         width: 0, height: 0,
-        borderLeft: '7px solid transparent',
-        borderRight: '7px solid transparent',
+        borderLeft: '7px solid transparent', borderRight: '7px solid transparent',
         borderTop: '7px solid #d4c4b0',
       }} />
       <div style={{
         position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%)',
         width: 0, height: 0,
-        borderLeft: '6px solid transparent',
-        borderRight: '6px solid transparent',
+        borderLeft: '6px solid transparent', borderRight: '6px solid transparent',
         borderTop: '6px solid #f8f4ef',
       }} />
 
-      {/* Close */}
       <button
         onClick={e => { e.stopPropagation(); onClose() }}
         style={{
@@ -144,8 +77,8 @@ function TripPopup({ trip, onDelete, onClose }) {
 
       {trip.note && (
         <div style={{
-          fontSize: '11px', color: '#5c3d1e', marginTop: '6px',
-          fontFamily: "'Caveat', cursive", fontSize: '13px',
+          fontSize: '13px', color: '#5c3d1e', marginTop: '6px',
+          fontFamily: "'Caveat', cursive",
           borderTop: '1px solid #e4d4c0', paddingTop: '6px',
         }}>
           {trip.note}
@@ -167,18 +100,43 @@ function TripPopup({ trip, onDelete, onClose }) {
   )
 }
 
+function useLandscapeMobile() {
+  const check = () => typeof window !== 'undefined'
+    && window.innerWidth > window.innerHeight
+    && window.innerHeight < 600
+  const [v, setV] = useState(check)
+  useEffect(() => {
+    const h = () => setV(check())
+    window.addEventListener('resize', h)
+    window.addEventListener('orientationchange', h)
+    return () => {
+      window.removeEventListener('resize', h)
+      window.removeEventListener('orientationchange', h)
+    }
+  }, [])
+  return v
+}
+
 export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTripId, disabled }) {
   const containerRef = useRef(null)
-  const innerRef = useRef(null)
-  const [scale, setScale] = useState(1)
-  const [offset, setOffset] = useState({ x: 0, y: 0 })
-  const [dragging, setDragging] = useState(false)
-  const [dragStart, setDragStart] = useState(null)
-  const [hasDragged, setHasDragged] = useState(false)
+  const innerRef     = useRef(null)
+  const touchRef     = useRef(null)   // touch gesture state (avoids stale closures in passive listener)
+
+  const [scale,        setScale]        = useState(1)
+  const [offset,       setOffset]       = useState({ x: 0, y: 0 })
+  const [dragging,     setDragging]     = useState(false)
+  const [dragStart,    setDragStart]    = useState(null)
+  const [hasDragged,   setHasDragged]   = useState(false)
   const [selectedTrip, setSelectedTrip] = useState(null)
 
+  const isLandscape  = useLandscapeMobile()
   const showPolaroids = scale > 1.5
+  const pinSize       = isLandscape ? 16 : 12
 
+  // Max 8 most recent trips for polaroids (trips already sorted DESC by created_at)
+  const polaroidTrips = showPolaroids ? trips.slice(0, 8) : []
+
+  // ── Mouse handlers ──────────────────────────────────────────────────────────
   const handleWheel = useCallback(e => {
     e.preventDefault()
     const factor = e.deltaY < 0 ? 1.15 : 0.87
@@ -194,10 +152,7 @@ export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTri
   const handleMouseMove = useCallback(e => {
     if (!dragging || !dragStart) return
     setHasDragged(true)
-    setOffset({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    })
+    setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
   }, [dragging, dragStart])
 
   const handleMouseUp = useCallback(e => {
@@ -208,71 +163,142 @@ export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTri
         const inner = innerRef.current
         if (!inner) return
         const rect = inner.getBoundingClientRect()
-        const x = ((e.clientX - rect.left) / rect.width) * 100
-        const y = ((e.clientY - rect.top) / rect.height) * 100
-        onMapClick({ x, y })
+        onMapClick({
+          x: ((e.clientX - rect.left)  / rect.width)  * 100,
+          y: ((e.clientY - rect.top)   / rect.height) * 100,
+        })
       }
     }
   }, [hasDragged, onMapClick])
 
+  // ── Touch handlers ───────────────────────────────────────────────────────────
+  // touchmove must be non-passive to call preventDefault; attach via useEffect.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    function onTouchMove(e) {
+      const ts = touchRef.current
+      if (!ts) return
+
+      if (e.touches.length === 1 && ts.type === 'pan') {
+        e.preventDefault()
+        ts.hasDragged = true
+        const t = e.touches[0]
+        const next = { x: t.clientX - ts.startX, y: t.clientY - ts.startY }
+        ts.offset = next
+        setOffset(next)
+      } else if (e.touches.length === 2 && ts.type === 'pinch') {
+        e.preventDefault()
+        const d = Math.hypot(
+          e.touches[1].clientX - e.touches[0].clientX,
+          e.touches[1].clientY - e.touches[0].clientY,
+        )
+        setScale(Math.max(0.8, Math.min(8, ts.baseScale * (d / ts.baseDist))))
+      }
+    }
+
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onTouchMove)
+  }, [])
+
+  const handleTouchStart = useCallback(e => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0]
+      touchRef.current = {
+        type:      'pan',
+        startX:    t.clientX - offset.x,
+        startY:    t.clientY - offset.y,
+        offset,
+        hasDragged: false,
+        clientX:   t.clientX,
+        clientY:   t.clientY,
+      }
+    } else if (e.touches.length === 2) {
+      touchRef.current = {
+        type:      'pinch',
+        baseDist:  Math.hypot(
+          e.touches[1].clientX - e.touches[0].clientX,
+          e.touches[1].clientY - e.touches[0].clientY,
+        ),
+        baseScale: scale,
+      }
+    }
+  }, [offset, scale])
+
+  const handleTouchEnd = useCallback(e => {
+    const ts = touchRef.current
+    if (ts?.type === 'pan' && !ts.hasDragged) {
+      setSelectedTrip(null)
+      if (onMapClick) {
+        const t = e.changedTouches[0]
+        const inner = innerRef.current
+        if (!inner) return
+        const rect = inner.getBoundingClientRect()
+        onMapClick({
+          x: ((t.clientX - rect.left)  / rect.width)  * 100,
+          y: ((t.clientY - rect.top)   / rect.height) * 100,
+        })
+      }
+    }
+    if (e.touches.length === 0) touchRef.current = null
+  }, [onMapClick])
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div
       ref={containerRef}
       className="relative w-full overflow-hidden select-none"
       style={{
         height: '100vh',
-        cursor: dragging ? 'grabbing' : 'crosshair',
+        cursor: dragging ? 'grabbing' : 'default',
         pointerEvents: disabled ? 'none' : 'auto',
+        touchAction: 'none',
       }}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={() => setDragging(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
-      {/* Background + pins layer — scales/translates together */}
+      {/* Background + pins — scales/translates together */}
       <div
         ref={innerRef}
         style={{
-          width: '100%',
+          width:  '100%',
           height: '100%',
           backgroundImage: trips.length === 0
             ? `url('/assets/HERO_UPDATED_TRAVEL_WALL_CONCEPT_9_16_LUCE_NOTTURNA_CALDA.png')`
             : `url('/assets/HERO_UPDATED_TRAVEL_WALL_CONCEPT_9_16_LUCE_NOTTURNA_CALDA_SENZA_FOTO.png')`,
-          backgroundSize: 'cover',
+          backgroundSize:     'cover',
           backgroundPosition: 'center top',
-          backgroundRepeat: 'no-repeat',
+          backgroundRepeat:   'no-repeat',
           position: 'relative',
           transformOrigin: 'center center',
-          transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+          transform:  `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
           transition: dragging ? 'none' : 'transform 0.05s',
         }}
       >
-        {/* Decorative wood icons on oceans */}
-        {/* Atlantic Ocean */}
-        <WoodPlane style={{ left: '27%', top: '38%' }} />
-        {/* Pacific Ocean */}
-        <WoodPlane style={{ left: '10%', top: '45%' }} />
-        {/* Indian Ocean */}
-        <WoodSailboat style={{ left: '64%', top: '58%' }} />
+        {/* Dot pins — always visible for every trip */}
+        {trips.map(trip => (
+          <SmallPin
+            key={trip.id}
+            trip={trip}
+            onSelect={setSelectedTrip}
+            size={pinSize}
+          />
+        ))}
 
-        {/* Trips */}
-        {trips.map(trip => {
-          if (trip.trip_type === 'dream') {
-            return <HeartPin key={trip.id} trip={trip} onSelect={setSelectedTrip} />
-          }
-          if (showPolaroids) {
-            return (
-              <Polaroid
-                key={trip.id}
-                trip={trip}
-                onDelete={onDeleteTrip}
-                onSelect={setSelectedTrip}
-              />
-            )
-          }
-          return <SmallPin key={trip.id} trip={trip} onSelect={setSelectedTrip} />
-        })}
+        {/* Polaroids — zoom-in only, max 8 most recent */}
+        {polaroidTrips.map(trip => (
+          <Polaroid
+            key={`pol-${trip.id}`}
+            trip={trip}
+            onSelect={setSelectedTrip}
+          />
+        ))}
 
         {/* Trip detail popup */}
         {selectedTrip && (
@@ -289,7 +315,8 @@ export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTri
         className="absolute bottom-2 right-2 text-xs px-2 py-1 rounded pointer-events-none z-40"
         style={{ background: 'rgba(0,0,0,0.4)', color: 'rgba(245,230,200,0.6)' }}
       >
-        {showPolaroids ? 'Polaroid visibili' : 'Zoom in per le polaroid'} · Scroll per zoom · Click per aggiungere
+        {showPolaroids ? 'Polaroid visibili' : 'Zoom in per le polaroid'}
+        {!isLandscape && ' · Scroll per zoom'}
       </div>
     </div>
   )

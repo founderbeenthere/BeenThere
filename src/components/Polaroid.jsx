@@ -3,12 +3,12 @@ const FRAME     = 4
 const PHOTO_H   = 56
 const CAPTION_H = 20
 const CARD_H    = FRAME + PHOTO_H + CAPTION_H  // 80
-const PIN_D     = 8
-const PIN_R     = PIN_D / 2                    // 4
+const TIP_H     = 8   // triangular tip that points down to pin center
+const TIP_W     = 6   // half-width of tip base
 
 function rotation(id) {
   const seed = String(id ?? '').split('').reduce((s, c) => s + c.charCodeAt(0), 0)
-  const magnitude = 3 + (seed % 3)         // 3, 4 or 5 degrees
+  const magnitude = 3 + (seed % 3)
   const direction = seed % 2 === 0 ? 1 : -1
   return direction * magnitude
 }
@@ -17,52 +17,29 @@ export default function Polaroid({ trip, onSelect }) {
   const rot = rotation(trip.id)
 
   return (
-    // Geographic anchor — pin center sits here
+    // Anchor at geographic point (pin center)
     <div
       style={{
         position: 'absolute',
         left: `${trip.map_x}%`,
         top:  `${trip.map_y}%`,
-        zIndex: 10,
+        zIndex: 20,
         pointerEvents: 'none',
       }}
     >
-      {/* Rotate the whole assembly around the geographic point (0,0) */}
-      <div
-        style={{
-          transformOrigin: '0 0',
-          transform: `rotate(${rot}deg)`,
-        }}
-      >
-        {/* Orange anchor pin — centered at (0,0) */}
-        <div
-          style={{
-            position: 'absolute',
-            left: -PIN_R,
-            top:  -PIN_R,
-            width:  PIN_D,
-            height: PIN_D,
-            borderRadius: '50%',
-            background: '#E8A050',
-            border: '1.5px solid rgba(255,255,255,0.75)',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
-            cursor: 'pointer',
-            pointerEvents: 'auto',
-            zIndex: 2,
-          }}
-          onClick={e => { e.stopPropagation(); onSelect?.(trip) }}
-        />
+      {/* Rotate entire assembly around pin center (0,0) */}
+      <div style={{ transformOrigin: '0 0', transform: `rotate(${rot}deg)` }}>
 
-        {/* Polaroid card — hangs below the pin */}
+        {/* Polaroid card — positioned so its bottom edge is at y=0 (pin center) */}
         <div
           style={{
             position: 'absolute',
             left: -(CARD_W / 2),
-            top:  PIN_R + 2,
+            top:  -(CARD_H + TIP_H),
             width:  CARD_W,
             height: CARD_H,
             background: '#fff',
-            boxShadow: '2px 4px 8px rgba(0,0,0,0.25)',
+            boxShadow: '2px 4px 10px rgba(0,0,0,0.30)',
             boxSizing: 'border-box',
             padding: `${FRAME}px ${FRAME}px 0`,
             cursor: 'pointer',
@@ -118,6 +95,22 @@ export default function Polaroid({ trip, onSelect }) {
             </span>
           </div>
         </div>
+
+        {/* Triangular tip — point at (0,0) = pin center */}
+        <div
+          style={{
+            position: 'absolute',
+            top:  -TIP_H,
+            left: -TIP_W,
+            width: 0,
+            height: 0,
+            borderLeft:  `${TIP_W}px solid transparent`,
+            borderRight: `${TIP_W}px solid transparent`,
+            borderTop:   `${TIP_H}px solid white`,
+            filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.15))',
+            pointerEvents: 'none',
+          }}
+        />
       </div>
     </div>
   )
