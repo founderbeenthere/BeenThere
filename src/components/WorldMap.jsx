@@ -1,12 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import Polaroid from './Polaroid'
-
-const FRAMES = [
-  '/assets/frame1.webp',
-  '/assets/frame2.webp',
-  '/assets/frame3.webp',
-  '/assets/frame4.webp',
-]
 
 // Wooden decorative icons on oceans
 function WoodPlane({ style }) {
@@ -174,34 +167,6 @@ function TripPopup({ trip, onDelete, onClose }) {
   )
 }
 
-function playCameraSound() {
-  try {
-    const ctx = new AudioContext()
-    const sampleRate = ctx.sampleRate
-    const duration = 0.08
-    const bufferSize = Math.floor(sampleRate * duration)
-    const buffer = ctx.createBuffer(1, bufferSize, sampleRate)
-    const data = buffer.getChannelData(0)
-    for (let i = 0; i < bufferSize; i++) {
-      const envelope = Math.pow(1 - i / bufferSize, 2)
-      data[i] = (Math.random() * 2 - 1) * envelope
-    }
-    const source = ctx.createBufferSource()
-    source.buffer = buffer
-    const filter = ctx.createBiquadFilter()
-    filter.type = 'bandpass'
-    filter.frequency.value = 2500
-    filter.Q.value = 0.8
-    const gain = ctx.createGain()
-    gain.gain.value = 0.4
-    source.connect(filter)
-    filter.connect(gain)
-    gain.connect(ctx.destination)
-    source.start()
-    source.onended = () => ctx.close()
-  } catch (_) {}
-}
-
 export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTripId, disabled }) {
   const containerRef = useRef(null)
   const innerRef = useRef(null)
@@ -210,31 +175,9 @@ export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTri
   const [dragging, setDragging] = useState(false)
   const [dragStart, setDragStart] = useState(null)
   const [hasDragged, setHasDragged] = useState(false)
-  const [cameraFrame, setCameraFrame] = useState(null) // 0-3 during animation, null = idle
   const [selectedTrip, setSelectedTrip] = useState(null)
 
   const showPolaroids = scale > 1.5
-
-  // Frame animation when new trip added
-  useEffect(() => {
-    if (!lastAddedTripId) return
-    playCameraSound()
-    let frame = 0
-    setCameraFrame(0)
-    const interval = setInterval(() => {
-      frame++
-      if (frame < FRAMES.length) {
-        setCameraFrame(frame)
-      } else if (frame === FRAMES.length) {
-        // Hold last frame (frame4) for 600ms extra
-        setTimeout(() => {
-          setCameraFrame(null)
-        }, 600)
-        clearInterval(interval)
-      }
-    }, 400)
-    return () => clearInterval(interval)
-  }, [lastAddedTripId])
 
   const handleWheel = useCallback(e => {
     e.preventDefault()
@@ -340,18 +283,6 @@ export default function WorldMap({ trips, onMapClick, onDeleteTrip, lastAddedTri
           />
         )}
       </div>
-
-      {/* Camera animation overlay — fixed over entire container */}
-      {cameraFrame !== null && (
-        <div
-          className="absolute inset-0 pointer-events-none z-50"
-          style={{
-            backgroundImage: `url('${FRAMES[cameraFrame]}')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-      )}
 
       {/* Zoom hint */}
       <div
