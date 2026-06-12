@@ -31,3 +31,6 @@ dist-ssr
 make-icons.mjs
 screenshot.mjs
 screenshot.png
+
+# Claude Code local settings
+.claude/settings.local.json
