@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import WorldMap from '../components/WorldMap'
+import WorldMap    from '../components/WorldMap'
 import AddTripModal from '../components/AddTripModal'
 import { useTrips } from '../hooks/useTrips'
 
-export default function MapPage() {
+export default function MapPage({ user, onSignOut }) {
   const { trips, loading, addTrip, deleteTrip } = useTrips()
-  const [showModal, setShowModal] = useState(false)
+  const [showModal,       setShowModal]       = useState(false)
   const [lastAddedTripId, setLastAddedTripId] = useState(null)
 
   async function handleAddTrip(tripData) {
     try {
-      const newTrip = await addTrip(tripData)
+      const newTrip = await addTrip({ ...tripData, user_id: user?.id })
       const id = newTrip?.id ?? `anim-${Date.now()}`
       setLastAddedTripId(null)
       requestAnimationFrame(() => setLastAddedTripId(id))
@@ -22,11 +22,8 @@ export default function MapPage() {
   }
 
   async function handleDeleteTrip(id) {
-    try {
-      await deleteTrip(id)
-    } catch (err) {
-      console.error('Errore eliminazione viaggio:', err)
-    }
+    try { await deleteTrip(id) }
+    catch (err) { console.error('Errore eliminazione viaggio:', err) }
   }
 
   return (
@@ -38,7 +35,32 @@ export default function MapPage() {
         disabled={showModal}
       />
 
-      {/* Floating + button — sole action */}
+      {/* Logout — top right, discrete */}
+      {!showModal && (
+        <button
+          onClick={onSignOut}
+          title="Esci"
+          style={{
+            position: 'fixed',
+            top: 12,
+            right: 12,
+            zIndex: 40,
+            padding: '5px 12px',
+            background: 'rgba(42,18,5,0.65)',
+            border: '1px solid rgba(196,170,132,0.4)',
+            borderRadius: 3,
+            color: 'rgba(245,230,200,0.8)',
+            fontSize: 11,
+            fontFamily: 'sans-serif',
+            cursor: 'pointer',
+            letterSpacing: '0.04em',
+          }}
+        >
+          esci
+        </button>
+      )}
+
+      {/* Floating + button */}
       {!showModal && (
         <button
           onClick={() => setShowModal(true)}
@@ -62,7 +84,7 @@ export default function MapPage() {
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          aria-label="Aggiungi luogo"
+          aria-label="Aggiungi viaggio"
         >
           +
         </button>
@@ -82,13 +104,14 @@ export default function MapPage() {
             zIndex: 50,
           }}
         >
-          Caricamento...
+          Caricamento…
         </div>
       )}
 
       {showModal && (
         <AddTripModal
           coords={{ x: 50, y: 50 }}
+          userId={user?.id}
           onConfirm={handleAddTrip}
           onCancel={() => setShowModal(false)}
         />
