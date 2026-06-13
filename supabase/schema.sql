@@ -21,12 +21,14 @@ alter table public.trips enable row level security;
 
 -- Elimina policy esistenti prima di ricrearle (idempotente)
 drop policy if exists "Utenti vedono i propri viaggi"     on public.trips;
+drop policy if exists "Chiunque può leggere i viaggi"     on public.trips;
 drop policy if exists "Utenti inseriscono i propri viaggi" on public.trips;
 drop policy if exists "Utenti eliminano i propri viaggi"  on public.trips;
 
-create policy "Utenti vedono i propri viaggi"
+-- SELECT pubblico: la mappa è visibile senza login
+create policy "Chiunque può leggere i viaggi"
   on public.trips for select
-  using (auth.uid() = user_id);
+  using (true);
 
 create policy "Utenti inseriscono i propri viaggi"
   on public.trips for insert
