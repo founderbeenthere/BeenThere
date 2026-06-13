@@ -184,7 +184,7 @@ export default function TryPage() {
 
           {/* Hero map image */}
           <img
-            src="/assets/map-hero.png.png"
+            src="/assets/map-hero.png"
             alt="BeenThere world map"
             style={{ width: '100%', display: 'block' }}
           />
