@@ -183,11 +183,10 @@ export default function TryPage() {
           </div>
 
           {/* Hero map image */}
-          {/* TODO: replace with final BeenThere /try hero asset */}
           <img
-            src="/assets/HERO_UPDATED_TRAVEL_WALL_CONCEPT.png"
-            alt="BeenThere world map with travel photos"
-            style={{ width: '100%', display: 'block', objectFit: 'cover' }}
+            src="/assets/map-hero.png.png"
+            alt="BeenThere world map"
+            style={{ width: '100%', display: 'block' }}
           />
 
           {/* CTA + note */}
