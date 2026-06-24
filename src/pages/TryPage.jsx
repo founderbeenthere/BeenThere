@@ -1,5 +1,10 @@
 import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { getGuestCount, addGuestTrip } from '../hooks/useGuestTrips'
+import TryChoosePhoto    from '../components/TryChoosePhoto'
+import TryCreatePolaroid from '../components/TryCreatePolaroid'
+import WowMoment         from '../components/WowMoment'
 
 const AMBER = '#C47820'
 const BG    = '#f0ebe0'
@@ -105,22 +110,70 @@ function Step({ badge, badgeAlign = 'left', icon, title, description }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Comprime un dataURL via Canvas (max 800px, JPEG 0.8)
+async function compressDataURL(dataURL, maxDim = 800, quality = 0.8) {
+  try {
+    const img = new Image()
+    img.src = dataURL
+    await new Promise(resolve => { img.onload = resolve })
+    let { width, height } = img
+    if (width > maxDim || height > maxDim) {
+      const ratio = Math.min(maxDim / width, maxDim / height)
+      width  = Math.round(width  * ratio)
+      height = Math.round(height * ratio)
+    }
+    const canvas = document.createElement('canvas')
+    canvas.width = width; canvas.height = height
+    canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+    return canvas.toDataURL('image/jpeg', quality)
+  } catch {
+    return dataURL // fallback: usa dataURL originale
+  }
+}
+
 export default function TryPage() {
   const { user, signInWithEmail } = useAuth()
+  const navigate = useNavigate()
 
   const [step,        setStep]        = useState('hero')
   const [photoSrc,    setPhotoSrc]    = useState(null)
+  const [tripData,    setTripData]    = useState(null)
   const [placeName,   setPlaceName]   = useState('')
   const [email,       setEmail]       = useState('')
   const [sendingLink, setSendingLink] = useState(false)
   const fileRef = useRef(null)
 
-  function handleFile(e) {
-    const file = e.target.files?.[0]
+  function handleFile(file) {
     if (!file) return
     const reader = new FileReader()
-    reader.onload = ev => { setPhotoSrc(ev.target.result); setStep('preview') }
+    reader.onload = ev => { setPhotoSrc(ev.target.result); setStep('polaroid') }
     reader.readAsDataURL(file)
+  }
+
+  async function handleConfirmPolaroid(data) {
+    // 1. Comprimi foto (max 800px, JPEG 0.8)
+    const compressedSrc = await compressDataURL(data.photo_src)
+
+    // 2. Costruisci trip object
+    const trip = {
+      id:         `guest-${Date.now()}`,
+      place_name: data.place_name,
+      lat:        data.lat,
+      lng:        data.lng,
+      visit_date: data.visit_date || null,
+      category:   data.category  || null,
+      photo_src:  compressedSrc,
+      emoji:      '📍',
+      created_at: new Date().toISOString(),
+    }
+
+    // 3. Salva in localStorage
+    const result = addGuestTrip(trip)
+    if (!result.ok) console.warn('Guest limit raggiunto — trip non salvato')
+
+    // 4. Avvia WOW
+    setTripData(trip)
+    setStep('wow')
   }
 
   async function handleSave(e) {
@@ -130,6 +183,38 @@ export default function TryPage() {
     await signInWithEmail(email.trim())
     setSendingLink(false)
     setStep('sent')
+  }
+
+  // Step 'wow' — animazione WOW + redirect automatico al wall
+  if (step === 'wow') {
+    return (
+      <WowMoment
+        trip={tripData}
+        onDone={() => navigate('/', { state: { celebrate: true, tripId: tripData?.id } })}
+      />
+    )
+  }
+
+  // Step 'polaroid' — schermata propria con header interno
+  if (step === 'polaroid') {
+    return (
+      <TryCreatePolaroid
+        photoSrc={photoSrc}
+        onBack={() => setStep('choose')}
+        onConfirm={handleConfirmPolaroid}
+      />
+    )
+  }
+
+  // Step 'choose' — schermata propria con header interno
+  if (step === 'choose') {
+    return (
+      <TryChoosePhoto
+        guestCount={getGuestCount()}
+        onBack={() => setStep('hero')}
+        onPhotoSelected={handleFile}
+      />
+    )
   }
 
   return (
@@ -145,8 +230,8 @@ export default function TryPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 22 }}>📌</span>
           <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, letterSpacing: '0.01em' }}>
-            <span style={{ color: DARK }}>BEEN</span>
-            <span style={{ color: AMBER }}>THERE</span>
+            <span style={{ color: DARK }}>Been</span>
+            <span style={{ color: AMBER }}>There</span>
           </span>
         </div>
         {/* Hamburger — decorativo, no menu */}
@@ -191,15 +276,8 @@ export default function TryPage() {
 
           {/* CTA + note */}
           <div style={{ padding: '24px 20px 12px' }}>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleFile}
-            />
             <button
-              onClick={() => fileRef.current?.click()}
+              onClick={() => setStep('choose')}
               style={{
                 width: '100%', padding: '18px 24px',
                 borderRadius: 12,

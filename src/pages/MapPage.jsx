@@ -1,10 +1,15 @@
-import { useState } from 'react'
-import WorldMap     from '../components/WorldMap'
-import AddTripModal from '../components/AddTripModal'
-import LoginModal   from './LoginModal'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import WorldMap          from '../components/WorldMap'
+import GuestWall         from '../components/GuestWall'
+import MicroCelebration  from '../components/MicroCelebration'
+import AddTripModal      from '../components/AddTripModal'
+import LoginModal        from './LoginModal'
 import { useTrips } from '../hooks/useTrips'
 import { geoToPercent } from '../utils/geo'
+import { getGuestTrips } from '../hooks/useGuestTrips'
 
+// Tenuto come fallback tecnico — non usato per lo stato TRY
 const DEMO_TRIPS = [
   { id: 'demo-1', place_name: 'Roma',     emoji: '🏛️', lat: 41.9028, lng: 12.4964,  photo_url: null, visit_date: '2023-04-10' },
   { id: 'demo-2', place_name: 'Tokyo',    emoji: '🌸', lat: 35.6762, lng: 139.6503, photo_url: null, visit_date: '2022-11-03' },
@@ -17,13 +22,54 @@ export default function MapPage({ user, signInWithEmail, onSignOut }) {
   const [showModal,       setShowModal]       = useState(false)
   const [showLogin,       setShowLogin]       = useState(false)
   const [lastAddedTripId, setLastAddedTripId] = useState(null)
+  const location = useLocation()
 
-  const isDemo       = trips.length === 0
-  const displayTrips = isDemo ? DEMO_TRIPS : trips
+  // Guest trips da localStorage — normalizzati con map_x/map_y/photo_url per Polaroid
+  const rawGuest   = (!user) ? getGuestTrips() : []
+  const guestTrips = rawGuest.map(t => {
+    const { left, top } = geoToPercent(t.lat ?? 0, t.lng ?? 0)
+    return { ...t, map_x: left, map_y: top, photo_url: t.photo_src ?? null }
+  })
+
+  // Trip celebrato — catturato una sola volta al mount con useState lazy.
+  // Nessun side-effect qui: window.history.replaceState è in useEffect.
+  const [celebrateTrip] = useState(() => {
+    if (!user && location.state?.celebrate) {
+      return guestTrips.find(t => t.id === location.state.tripId) ?? guestTrips[0] ?? null
+    }
+    return null
+  })
+
+  // Pulisce lo state dalla history DOPO il mount → no overlay su refresh
+  useEffect(() => {
+    if (celebrateTrip) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
+  // ── Non autenticato → GuestWall + eventuale MicroCelebration ────────────────
+  if (!user) {
+    return (
+      <>
+        <GuestWall
+          guestTrips={guestTrips}
+          onSaveClick={() => console.log('save memories clicked')}
+        />
+        {celebrateTrip && (
+          <MicroCelebration
+            trip={celebrateTrip}
+            onDismiss={() => {}}
+          />
+        )}
+      </>
+    )
+  }
+
+  // ── Autenticato → WorldMap legacy ────────────────────────────────────────────
 
   async function handleAddTrip(tripData) {
     try {
-      const newTrip = await addTrip({ ...tripData, user_id: user?.id })
+      const newTrip = await addTrip({ ...tripData, user_id: user.id })
       const id = newTrip?.id ?? `anim-${Date.now()}`
       setLastAddedTripId(null)
       requestAnimationFrame(() => setLastAddedTripId(id))
@@ -35,25 +81,21 @@ export default function MapPage({ user, signInWithEmail, onSignOut }) {
   }
 
   async function handleDeleteTrip(id) {
-    if (isDemo) return
     try { await deleteTrip(id) }
     catch (err) { console.error('Errore eliminazione viaggio:', err) }
-  }
-
-  function handleCameraClick() {
-    if (!user) { setShowLogin(true) } else { setShowModal(true) }
   }
 
   return (
     <div className="w-full overflow-hidden" style={{ height: '100vh' }}>
       <WorldMap
-        trips={displayTrips}
+        trips={trips}
         onDeleteTrip={handleDeleteTrip}
         lastAddedTripId={lastAddedTripId}
         disabled={showModal || showLogin}
       />
 
-      {user && !showModal && !showLogin && (
+      {/* Logout */}
+      {!showModal && !showLogin && (
         <button
           onClick={onSignOut}
           title="Esci"
@@ -71,9 +113,10 @@ export default function MapPage({ user, signInWithEmail, onSignOut }) {
         </button>
       )}
 
+      {/* Aggiungi viaggio */}
       {!showModal && !showLogin && (
         <button
-          onClick={handleCameraClick}
+          onClick={() => setShowModal(true)}
           style={{
             position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
             zIndex: 40, padding: '13px 28px', borderRadius: 40,
@@ -108,7 +151,7 @@ export default function MapPage({ user, signInWithEmail, onSignOut }) {
       {showModal && (
         <AddTripModal
           coords={{ x: 50, y: 50 }}
-          userId={user?.id}
+          userId={user.id}
           onConfirm={handleAddTrip}
           onCancel={() => setShowModal(false)}
         />
