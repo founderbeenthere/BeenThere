@@ -71,7 +71,7 @@ export default function MicroCelebration({ trip, onDismiss }) {
     <>
       <style>{`
         @keyframes mc-fadein { from { opacity:0 } to { opacity:1 } }
-        @keyframes mc-card   { from { opacity:0; transform:translateX(-50%) scale(0.93) } to { opacity:1; transform:translateX(-50%) scale(1) } }
+        @keyframes mc-card   { from { opacity:0; transform:translateX(-50%) translateY(calc(-50% + 12px)) scale(0.93) } to { opacity:1; transform:translateX(-50%) translateY(-50%) scale(1) } }
         @keyframes mc-sp1    { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:.7;transform:translate(-14px,-16px) scale(1)} 100%{opacity:0;transform:translate(-20px,-24px) scale(0)} }
         @keyframes mc-sp2    { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:.7;transform:translate(14px,-14px) scale(1)} 100%{opacity:0;transform:translate(20px,-20px) scale(0)} }
         @keyframes mc-sp3    { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:.6;transform:translate(0px,-20px) scale(1)} 100%{opacity:0;transform:translate(0,-28px) scale(0)} }
@@ -82,25 +82,26 @@ export default function MicroCelebration({ trip, onDismiss }) {
         onClick={handleContinua}
         style={{
           position: 'fixed', inset: 0, zIndex: 100,
-          background: 'rgba(26,13,4,0.52)',
+          background: 'rgba(26,13,4,0.40)',
           animation: 'mc-fadein 0.25s ease-out both',
         }}
       />
 
-      {/* Card — centrata orizzontalmente, 40% dall'alto */}
+      {/* Card — centrata verticalmente e orizzontalmente */}
       <div
         onClick={e => e.stopPropagation()}
         style={{
           position: 'fixed',
-          top: '38%',
+          top: '50%',
           left: '50%',
+          transform: 'translateX(-50%) translateY(-50%)',
           zIndex: 101,
           width: '88vw',
           maxWidth: 340,
           background: '#f8f4ef',
           borderRadius: 12,
           boxShadow: '0 16px 48px rgba(0,0,0,0.38)',
-          padding: '28px 24px 20px',
+          padding: '36px 24px 20px',
           textAlign: 'center',
           animation: 'mc-card 0.3s cubic-bezier(0.34,1.3,0.64,1) both',
         }}
@@ -188,7 +189,7 @@ export default function MicroCelebration({ trip, onDismiss }) {
         {/* Pulsanti */}
         <div style={{ display:'flex', gap:10, marginBottom:12 }}>
           <button onClick={handleShare} style={btnSecondary}>
-            {copied ? '✓ Link copiato' : '⟨ Condividi'}
+            {copied ? '✓ Link copiato' : 'Condividi'}
           </button>
           <button onClick={handleContinua} style={btnPrimary}>
             Continua
@@ -215,5 +216,5 @@ const btnSecondary = {
   flex: 1, padding: '10px 0',
   background: 'transparent', border: `1.5px solid ${AMBER}`, borderRadius: 8,
   color: AMBER, fontSize: 14, fontWeight: 600,
-  fontFamily: 'sans-serif', cursor: 'pointer',
+  fontFamily: "'Playfair Display', serif", cursor: 'pointer',
 }
