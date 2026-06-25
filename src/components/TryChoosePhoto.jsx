@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import BeenThereLogo from './BeenThereLogo'
 
 const AMBER = '#C47820'
 const BG    = '#f0ebe0'
@@ -41,14 +42,8 @@ export default function TryChoosePhoto({ onBack, onPhotoSelected, guestCount }) 
           </svg>
         </button>
 
-        {/* Logo centrato */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 20 }}>📌</span>
-          <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700 }}>
-            <span style={{ color: DARK }}>Been</span>
-            <span style={{ color: AMBER }}>There</span>
-          </span>
-        </div>
+        {/* Logo ufficiale BeenThere! */}
+        <BeenThereLogo size={17}/>
 
         {/* Info placeholder */}
         <button aria-label="Info" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>

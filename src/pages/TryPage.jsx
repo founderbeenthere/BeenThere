@@ -5,6 +5,7 @@ import { getGuestCount, addGuestTrip } from '../hooks/useGuestTrips'
 import TryChoosePhoto    from '../components/TryChoosePhoto'
 import TryCreatePolaroid from '../components/TryCreatePolaroid'
 import WowMoment         from '../components/WowMoment'
+import BeenThereLogo     from '../components/BeenThereLogo'
 
 const AMBER = '#C47820'
 const BG    = '#f0ebe0'
@@ -226,14 +227,8 @@ export default function TryPage() {
         padding: '16px 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 22 }}>📌</span>
-          <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, letterSpacing: '0.01em' }}>
-            <span style={{ color: DARK }}>Been</span>
-            <span style={{ color: AMBER }}>There</span>
-          </span>
-        </div>
+        {/* Logo ufficiale BeenThere! */}
+        <BeenThereLogo size={18}/>
         {/* Hamburger — decorativo, no menu */}
         <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} aria-label="Menu">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={DARK} strokeWidth="2" strokeLinecap="round">
@@ -302,11 +297,11 @@ export default function TryPage() {
           </div>
 
           {/* ── "Come funziona" ─────────────────────────────────────────────── */}
-          <div style={{ padding: '32px 20px 48px' }}>
+          <div style={{ padding: '14px 20px 40px' }}>
             <h2 style={{
               fontFamily: "'Playfair Display', serif",
               fontSize: 20, fontWeight: 700,
-              color: DARK, textAlign: 'center', margin: '0 0 28px',
+              color: DARK, textAlign: 'center', margin: '0 0 18px',
             }}>
               Come funziona
             </h2>
@@ -337,7 +332,7 @@ export default function TryPage() {
             </div>
 
             {/* Arrow down */}
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '20px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '14px 0' }}>
               <IconArrowDown />
             </div>
 
