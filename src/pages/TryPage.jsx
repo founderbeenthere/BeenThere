@@ -85,27 +85,100 @@ const IconLock = () => (
 function Badge({ label }) {
   return (
     <div style={{
-      width: 28, height: 28, borderRadius: '50%',
+      width: 22, height: 22, borderRadius: '50%',
       background: AMBER, color: '#fff',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 13, fontWeight: 700, fontFamily: 'sans-serif',
+      fontSize: 11, fontWeight: 700, fontFamily: 'sans-serif',
       flexShrink: 0,
     }}>{label}</div>
   )
 }
 
-// ── step card ──────────────────────────────────────────────────────────────────
+// ── step card — icona in container ambra, badge assoluto in angolo ─────────────
 function Step({ badge, badgeAlign = 'left', icon, title, description }) {
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, position: 'relative' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, position: 'relative' }}>
       {badge && (
-        <div style={{ position: 'absolute', top: 0, [badgeAlign]: 0 }}>
+        <div style={{ position: 'absolute', top: 0, [badgeAlign]: 0, zIndex: 1 }}>
           <Badge label={badge} />
         </div>
       )}
-      <div style={{ marginTop: badge ? 4 : 0 }}>{icon}</div>
-      <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: DARK, textAlign: 'center', fontFamily: 'sans-serif' }}>{title}</p>
-      <p style={{ margin: 0, fontSize: 11, color: SUB, textAlign: 'center', lineHeight: 1.5, fontFamily: 'sans-serif' }}>{description}</p>
+      {/* Icona in contenitore ambra — tutti i step allo stesso livello */}
+      <div style={{
+        width: 50, height: 50, borderRadius: 13,
+        background: 'rgba(196,120,32,0.09)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <div style={{ transform: 'scale(0.72)', transformOrigin: 'center', display: 'flex' }}>
+          {icon}
+        </div>
+      </div>
+      <p style={{ margin: 0, fontWeight: 700, fontSize: 12, color: DARK, textAlign: 'center', fontFamily: "'Playfair Display', serif" }}>{title}</p>
+      <p style={{ margin: 0, fontSize: 10, color: SUB, textAlign: 'center', lineHeight: 1.4, fontFamily: 'sans-serif' }}>{description}</p>
+    </div>
+  )
+}
+
+// Polaroid decorative sull'hero di /try — posizioni calibrate su map-hero.png (16:9)
+// src: foto reale Unsplash — emoji: fallback se la rete non è disponibile
+const HERO_POLAROIDS = [
+  { id:'usa',       left:'13%', top:'33%', rot:-2.5,
+    src:'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?w=200&q=75',
+    emoji:'🗽', caption:'New York'  },
+  { id:'europe',    left:'48%', top:'16%', rot: 2,
+    src:'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=200&q=75',
+    emoji:'🗼', caption:'Paris'     },
+  { id:'pisa',      left:'52%', top:'22%', rot:-1.5,
+    src:'https://images.unsplash.com/photo-1541199249251-f713e6145474?w=200&q=75',
+    emoji:'🏛️', caption:'Pisa'      },
+  { id:'india',     left:'72%', top:'33%', rot: 3,
+    src:'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=200&q=75',
+    emoji:'🕌', caption:'India'     },
+  { id:'australia', left:'83%', top:'67%', rot:-2,
+    src:'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=200&q=75',
+    emoji:'🦘', caption:'Sydney'    },
+]
+
+function DecorativePolaroid({ left, top, rot, src, emoji, caption }) {
+  const [imgErr, setImgErr] = useState(false)
+  return (
+    <div style={{
+      position: 'absolute', left, top,
+      transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+      width: 78, zIndex: 10, pointerEvents: 'none',
+    }}>
+      {/* Pin dorata */}
+      <div style={{
+        position: 'absolute', top: -10, left: '50%',
+        transform: 'translateX(-50%)',
+        width: 11, height: 11, borderRadius: '50%',
+        background: 'radial-gradient(circle at 35% 35%, #f5cc50, #C47820)',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.40)',
+        zIndex: 2,
+      }}/>
+      {/* Cornice polaroid */}
+      <div style={{ background: '#fff', padding: '5px 5px 0', boxShadow: '0 2px 10px rgba(0,0,0,0.18)' }}>
+        <div style={{ width: '100%', height: 62, overflow: 'hidden', background: '#d8d0c8' }}>
+          {src && !imgErr ? (
+            <img
+              src={src}
+              alt={caption}
+              onError={() => setImgErr(true)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
+              {emoji}
+            </div>
+          )}
+        </div>
+        <div style={{ height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontFamily: "'Caveat', cursive", fontSize: 11, color: '#1a120a', whiteSpace: 'nowrap' }}>
+            {caption}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -207,6 +280,43 @@ export default function TryPage() {
     )
   }
 
+  // ── HERO — immagine statica approvata + click target trasparente sul CTA ────
+  // L'immagine try-landing-static.png include già logo, headline, mappa,
+  // CTA, "Nessuna registrazione", "Come funziona" e A/B/C.
+  // NON mostriamo l'header di TryPage per evitare duplicazioni.
+  if (step === 'hero') {
+    return (
+      <div style={{ height: '100dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ position: 'relative', width: '100%', background: '#f0ebe0' }}>
+        <img
+          src="/assets/try-landing-final.png"
+          alt="BeenThere — Your travel. Your map. Your wall."
+          style={{ width: '100%', display: 'block' }}
+          draggable={false}
+        />
+        {/* Click target trasparente sul bottone "Carica o scatta una foto".
+            Il CTA nell'immagine 9:19.5 è posizionato tra il 59% e il 67% dall'alto. */}
+        <button
+          onClick={() => setStep('choose')}
+          aria-label="Carica o scatta una foto"
+          style={{
+            position: 'absolute',
+            top:    '59%',
+            height: '7.5%',
+            left:   '7%',
+            right:  '7%',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            zIndex: 10,
+            borderRadius: 12,
+          }}
+        />
+      </div>
+      </div>
+    )
+  }
+
   // Step 'choose' — schermata propria con header interno
   if (step === 'choose') {
     return (
@@ -224,7 +334,7 @@ export default function TryPage() {
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <header style={{
         width: '100%', maxWidth: 480,
-        padding: '16px 20px',
+        padding: '6px 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         {/* Logo ufficiale BeenThere! */}
@@ -244,33 +354,38 @@ export default function TryPage() {
         <div style={{ width: '100%', maxWidth: 480 }}>
 
           {/* Headline */}
-          <div style={{ padding: '8px 24px 20px', textAlign: 'center' }}>
+          <div style={{ padding: '2px 24px 4px', textAlign: 'center' }}>
             <h1 style={{
               fontFamily: "'Playfair Display', serif",
-              fontSize: 38, fontWeight: 900,
-              margin: 0, lineHeight: 1.15, color: DARK,
+              fontSize: 35, fontWeight: 900,
+              margin: 0, lineHeight: 1.04, color: DARK,
             }}>
               Your travel.<br />
               Your map.<br />
               <span style={{ color: AMBER }}>Your wall.</span>
             </h1>
             <p style={{
-              fontFamily: 'sans-serif', fontSize: 15,
-              color: SUB, marginTop: 12, lineHeight: 1.5,
+              fontFamily: 'sans-serif', fontSize: 14,
+              color: SUB, marginTop: 5, lineHeight: 1.4,
             }}>
               Trasforma le tue foto<br />in una mappa dei tuoi ricordi.
             </p>
           </div>
 
-          {/* Hero map image */}
-          <img
-            src="/assets/map-hero.png"
-            alt="BeenThere world map"
-            style={{ width: '100%', display: 'block' }}
-          />
+          {/* Hero — mappa legno + 5 polaroid decorative (Opzione C approvata) */}
+          <div style={{ position: 'relative', width: '100%' }}>
+            <img
+              src="/assets/map-hero.png"
+              alt="BeenThere world map"
+              style={{ width: '100%', display: 'block', maxHeight: '44vw', objectFit: 'cover', objectPosition: 'center top' }}
+            />
+            {HERO_POLAROIDS.map(p => (
+              <DecorativePolaroid key={p.id} {...p}/>
+            ))}
+          </div>
 
           {/* CTA + note */}
-          <div style={{ padding: '24px 20px 12px' }}>
+          <div style={{ padding: '10px 20px 6px' }}>
             <button
               onClick={() => setStep('choose')}
               style={{
@@ -297,11 +412,11 @@ export default function TryPage() {
           </div>
 
           {/* ── "Come funziona" ─────────────────────────────────────────────── */}
-          <div style={{ padding: '14px 20px 40px' }}>
+          <div style={{ padding: '10px 16px 24px' }}>
             <h2 style={{
               fontFamily: "'Playfair Display', serif",
               fontSize: 20, fontWeight: 700,
-              color: DARK, textAlign: 'center', margin: '0 0 18px',
+              color: DARK, textAlign: 'center', margin: '0 0 12px',
             }}>
               Come funziona
             </h2>
@@ -315,13 +430,13 @@ export default function TryPage() {
                 title="Carica una foto"
                 description="Scegli una foto dal tuo dispositivo o scattane una."
               />
-              <div style={{ paddingTop: 36, flexShrink: 0 }}><IconArrowRight /></div>
+              <div style={{ paddingTop: 20, flexShrink: 0 }}><IconArrowRight /></div>
               <Step
                 icon={<IconPin />}
                 title="Troviamo il luogo"
                 description="Rileviamo automaticamente dove è stata scattata."
               />
-              <div style={{ paddingTop: 36, flexShrink: 0 }}><IconArrowRight /></div>
+              <div style={{ paddingTop: 20, flexShrink: 0 }}><IconArrowRight /></div>
               <Step
                 badge="3"
                 badgeAlign="right"
@@ -332,7 +447,7 @@ export default function TryPage() {
             </div>
 
             {/* Arrow down */}
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '14px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
               <IconArrowDown />
             </div>
 

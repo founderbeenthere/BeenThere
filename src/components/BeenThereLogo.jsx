@@ -13,22 +13,24 @@ const DARK  = '#1a120a'
 const AMBER = '#C47820'
 
 function PinMark({ fontSize }) {
-  const w = Math.round(fontSize * 0.44)
-  const h = Math.round(fontSize * 1.15)
+  // La pin sostituisce il "!" — deve avere peso visivo simile a un punto esclamativo
+  // Testa grande (≈ punto del "!"), ago lungo (≈ linea del "!")
+  const w = Math.round(fontSize * 0.58)
+  const h = Math.round(fontSize * 1.32)
   return (
     <svg
       width={w} height={h}
-      viewBox="0 0 9 22"
+      viewBox="0 0 11 26"
       fill="none"
       style={{ marginLeft: 1, flexShrink: 0, verticalAlign: 'middle' }}
     >
-      {/* Testa della pin */}
-      <circle cx="4.5" cy="5" r="4" fill="#D4860A"/>
-      <circle cx="4.5" cy="5" r="4" stroke="#A05808" strokeWidth="0.6"/>
+      {/* Testa della pin — grande, legge come il "punto" dell'! */}
+      <circle cx="5.5" cy="5.5" r="5" fill="#D4860A"/>
+      <circle cx="5.5" cy="5.5" r="5" stroke="#A05808" strokeWidth="0.7"/>
       {/* Riflesso */}
-      <ellipse cx="3" cy="3.2" rx="1.5" ry="1" fill="rgba(255,235,140,0.42)"/>
-      {/* Ago */}
-      <line x1="4.5" y1="9.2" x2="4.5" y2="21" stroke="#A05808" strokeWidth="1.6" strokeLinecap="round"/>
+      <ellipse cx="3.6" cy="3.5" rx="2" ry="1.3" fill="rgba(255,235,140,0.40)"/>
+      {/* Ago — lungo, legge come la "linea" dell'! */}
+      <line x1="5.5" y1="11.2" x2="5.5" y2="25" stroke="#A05808" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   )
 }

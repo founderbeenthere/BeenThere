@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, Navigate } from 'react-router-dom'
 import WorldMap          from '../components/WorldMap'
 import GuestWall         from '../components/GuestWall'
 import MicroCelebration  from '../components/MicroCelebration'
@@ -47,7 +47,13 @@ export default function MapPage({ user, signInWithEmail, onSignOut }) {
     }
   }, [])
 
-  // ── Non autenticato → GuestWall + eventuale MicroCelebration ────────────────
+  // ── Non autenticato — routing per stato TRY ─────────────────────────────────
+  // Nessun ricordo: /try è la vera landing → redirect diretto (no double-landing)
+  if (!user && guestTrips.length === 0) {
+    return <Navigate to="/try" replace />
+  }
+
+  // Ha almeno 1 ricordo → mostra GuestWall con polaroid + eventuale MicroCelebration
   if (!user) {
     return (
       <>
