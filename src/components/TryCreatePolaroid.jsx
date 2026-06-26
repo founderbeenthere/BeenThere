@@ -53,20 +53,66 @@ function OrientThumb({ id, active, onClick }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function TryCreatePolaroid({ photoSrc, onBack, onConfirm }) {
+export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfirm }) {
   const [orientation, setOrientation] = useState('vertical')
   const [placeName,   setPlaceName]   = useState('')
   const [visitDate,   setVisitDate]   = useState('')
-  const [category,    setCategory]    = useState('')
+  const [category,    setCategory]    = useState('Altro') // B: default "Altro" sempre selezionato
   const [geo,         setGeo]         = useState(null)
   const [geoState,    setGeoState]    = useState('idle')
   const [suggestions, setSuggestions] = useState([])
   const [showSugg,    setShowSugg]    = useState(false)
-  const debounceRef = useRef(null)
+  const debounceRef   = useRef(null)
+  // skipSearch: quante volte il search-effect deve ignorare il cambio di placeName
+  // (usato quando il nome viene impostato automaticamente da EXIF, non dall'utente)
+  const skipSearch    = useRef(0)
+
+  // A: pre-compila Data e Luogo da EXIF GPS
+  useEffect(() => {
+    if (!exifData) return
+    if (exifData.date) setVisitDate(exifData.date)
+
+    if (exifData.lat != null && exifData.lng != null) {
+      const lat4 = exifData.lat.toFixed(4)
+      const lng4 = exifData.lng.toFixed(4)
+      console.log('REVERSE GEOCODE START', lat4, lng4)
+
+      // Imposta subito geo + coordinate come placeholder → CTA già abilitata
+      setGeo({ lat: exifData.lat, lng: exifData.lng })
+      setGeoState('found')
+      skipSearch.current += 1          // la prossima modifica a placeName viene da qui
+      setPlaceName(`${lat4}, ${lng4}`)
+
+      // Reverse geocode in background → sostituisce con nome leggibile
+      fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${exifData.lat}&lon=${exifData.lng}&format=json`,
+        { headers: { 'Accept-Language': 'it,en' } }
+      )
+        .then(r => r.json())
+        .then(data => {
+          console.log('REVERSE GEOCODE RESULT', JSON.stringify(data?.address))
+          const name =
+            data.address?.city    ||
+            data.address?.town    ||
+            data.address?.village ||
+            data.address?.county  ||
+            (data.display_name?.split(',')[0] ?? '')
+          if (name.trim()) {
+            skipSearch.current += 1    // anche questo cambio viene da qui, non dall'utente
+            setPlaceName(name.trim())
+            setGeo({ lat: exifData.lat, lng: exifData.lng }) // mantieni geo corretto
+            setGeoState('found')
+          }
+        })
+        .catch(e => console.log('REVERSE GEOCODE ERROR', String(e)))
+    }
+  }, [exifData])
 
   useEffect(() => {
     const q = placeName.trim()
     if (!q) { setGeo(null); setGeoState('idle'); setSuggestions([]); return }
+    // Skip: nome impostato automaticamente da EXIF (non input utente)
+    if (skipSearch.current > 0) { skipSearch.current -= 1; return }
     clearTimeout(debounceRef.current)
     setGeoState('loading')
     debounceRef.current = setTimeout(async () => {
@@ -102,7 +148,9 @@ export default function TryCreatePolaroid({ photoSrc, onBack, onConfirm }) {
     })
   }
 
-  const canConfirm  = placeName.trim().length > 0
+  // C: location opzionale — CTA attiva appena la foto è caricata
+  // place_name ha fallback 'Il mio posto' in handleConfirm
+  const canConfirm  = !!photoSrc
   const captionText = placeName.trim() || 'Il tuo posto'
 
   return (
@@ -213,7 +261,7 @@ export default function TryCreatePolaroid({ photoSrc, onBack, onConfirm }) {
               <div style={{ padding:'10px 12px' }}>
                 <label style={labelStyle}>Categoria</label>
                 <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inputStyle, cursor:'pointer', appearance:'auto' }}>
-                  <option value="">Seleziona…</option>
+
                   {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>

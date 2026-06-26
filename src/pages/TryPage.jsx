@@ -183,6 +183,99 @@ function DecorativePolaroid({ left, top, rot, src, emoji, caption }) {
   )
 }
 
+// ── Parser EXIF minimale — legge GPS e DateTimeOriginal da JPEG ──────────────
+// Deve essere chiamato sul File ORIGINALE prima della compressione canvas
+// (la canvas strip tutti i metadata)
+async function readExifData(file) {
+  const result = { lat: null, lng: null, date: null }
+  try {
+    const ab  = await file.arrayBuffer()
+    const dv  = new DataView(ab)
+    if (dv.getUint16(0) !== 0xFFD8) return result // non è JPEG
+
+    let pos = 2
+    while (pos < ab.byteLength - 4) {
+      if (dv.getUint8(pos) !== 0xFF) break
+      const marker = dv.getUint8(pos + 1)
+      const segLen = dv.getUint16(pos + 2)
+
+      if (marker === 0xE1 && segLen > 8 &&
+          dv.getUint8(pos+4)===0x45 && dv.getUint8(pos+5)===0x78 &&
+          dv.getUint8(pos+6)===0x69 && dv.getUint8(pos+7)===0x66) {
+        // APP1 con header "Exif"
+        const tb = pos + 10 // TIFF base
+        const le = dv.getUint16(tb) === 0x4949
+        const r8  = (o) => dv.getUint8(tb + o)
+        const r16 = (o) => dv.getUint16(tb + o, le)
+        const r32 = (o) => dv.getUint32(tb + o, le)
+
+        const ifd0 = r32(4)
+        const n0   = r16(ifd0)
+
+        for (let i = 0; i < n0; i++) {
+          const e   = ifd0 + 2 + i * 12
+          const tag = r16(e)
+
+          // ExifIFD → DateTimeOriginal
+          if (tag === 0x8769) {
+            const exifBase = r32(e + 8)
+            const ne = r16(exifBase)
+            for (let j = 0; j < ne; j++) {
+              const f = exifBase + 2 + j * 12
+              if (r16(f) === 0x9003) {
+                const off = r32(f + 8)
+                const y = [r8(off),r8(off+1),r8(off+2),r8(off+3)].map(c=>String.fromCharCode(c)).join('')
+                const m = [r8(off+5),r8(off+6)].map(c=>String.fromCharCode(c)).join('')
+                const d = [r8(off+8),r8(off+9)].map(c=>String.fromCharCode(c)).join('')
+                result.date = `${y}-${m}-${d}`
+              }
+            }
+          }
+
+          // GPS IFD → lat/lng
+          if (tag === 0x8825) {
+            const gpsBase = r32(e + 8)
+            const ng = r16(gpsBase)
+            let latRef='N', lngRef='E', latDms=null, lngDms=null
+
+            for (let j = 0; j < ng; j++) {
+              const g  = gpsBase + 2 + j * 12
+              const gt = r16(g)
+              if (gt === 1) latRef = String.fromCharCode(r8(g + 8))
+              else if (gt === 3) lngRef = String.fromCharCode(r8(g + 8))
+              else if (gt === 2 || gt === 4) {
+                const vo  = r32(g + 8)
+                const dms = [0,1,2].map(k => {
+                  const num = r32(vo + k*8)
+                  const den = r32(vo + k*8 + 4)
+                  return den > 0 ? num / den : 0
+                })
+                if (gt === 2) latDms = dms; else lngDms = dms
+              }
+            }
+            console.log('EXIF RAW GPS', { latRef, lngRef, latDms, lngDms })
+            if (latDms && lngDms) {
+              const dec = (dms, ref) => {
+                const v = dms[0] + dms[1]/60 + dms[2]/3600
+                return (ref==='S'||ref==='W') ? -v : v
+              }
+              result.lat = dec(latDms, latRef)
+              result.lng = dec(lngDms, lngRef)
+            }
+          }
+        }
+        break // EXIF trovato
+      }
+      pos += 2 + segLen
+    }
+  } catch (err) {
+    console.warn('EXIF parse error:', err)
+  }
+  console.log('EXIF PARSED LAT/LNG', result.lat, result.lng)
+  console.log('EXIF DATE', result.date)
+  return result
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Comprime un dataURL via Canvas (max 800px, JPEG 0.8)
 async function compressDataURL(dataURL, maxDim = 800, quality = 0.8) {
@@ -211,11 +304,25 @@ export default function TryPage() {
 
   const [step,        setStep]        = useState('hero')
   const [photoSrc,    setPhotoSrc]    = useState(null)
+  const [exifData,    setExifData]    = useState(null)
   const [tripData,    setTripData]    = useState(null)
   const [placeName,   setPlaceName]   = useState('')
   const [email,       setEmail]       = useState('')
   const [sendingLink, setSendingLink] = useState(false)
-  const fileRef = useRef(null)
+  const fileRef      = useRef(null)
+  const heroInputRef = useRef(null)  // BUG 1: picker diretto dalla hero CTA
+
+  // BUG 1: aperto dal picker della hero — legge EXIF prima di comprimere
+  async function handleHeroFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = '' // permette ri-selezione dello stesso file
+    const exif = await readExifData(file)
+    setExifData(exif)
+    const reader = new FileReader()
+    reader.onload = ev => { setPhotoSrc(ev.target.result); setStep('polaroid') }
+    reader.readAsDataURL(file)
+  }
 
   function handleFile(file) {
     if (!file) return
@@ -274,6 +381,7 @@ export default function TryPage() {
     return (
       <TryCreatePolaroid
         photoSrc={photoSrc}
+        exifData={exifData}
         onBack={() => setStep('choose')}
         onConfirm={handleConfirmPolaroid}
       />
@@ -294,22 +402,34 @@ export default function TryPage() {
           style={{ width: '100%', display: 'block' }}
           draggable={false}
         />
-        {/* Click target trasparente sul bottone "Carica o scatta una foto".
-            Il CTA nell'immagine 9:19.5 è posizionato tra il 59% e il 67% dall'alto. */}
+
+        {/* BUG 1: file input nascosto — aperto direttamente dalla CTA hero */}
+        <input
+          ref={heroInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleHeroFile}
+        />
+
+        {/* BUG 1 + BUG 3: click target sul CTA dell'immagine.
+            - onClick → apre picker nativo direttamente (no schermata intermedia)
+            - area ampliata: top/height/left/right più generosi per tocco affidabile */}
         <button
-          onClick={() => setStep('choose')}
+          onClick={() => heroInputRef.current?.click()}
           aria-label="Carica o scatta una foto"
           style={{
             position: 'absolute',
-            top:    '59%',
-            height: '7.5%',
-            left:   '7%',
-            right:  '7%',
+            top:    '57%',
+            height: '11%',
+            left:   '4%',
+            right:  '4%',
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',
             zIndex: 10,
-            borderRadius: 12,
+            borderRadius: 14,
+            minHeight: 44,
           }}
         />
       </div>
