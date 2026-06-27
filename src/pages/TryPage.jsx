@@ -312,11 +312,12 @@ export default function TryPage() {
   const fileRef      = useRef(null)
   const heroInputRef = useRef(null)  // BUG 1: picker diretto dalla hero CTA
 
-  // BUG 1: aperto dal picker della hero — legge EXIF prima di comprimere
-  async function handleHeroFile(e) {
-    const file = e.target.files?.[0]
+  // Loader unico: legge EXIF (GPS + data) dal File ORIGINALE — PRIMA di qualsiasi
+  // compressione, perché la canvas strippa tutti i metadata — poi passa allo step
+  // polaroid. Usato da OGNI path di selezione foto (hero + galleria), così le
+  // coordinate non vengono mai perse a seconda di come si carica la foto.
+  async function loadPhotoFile(file) {
     if (!file) return
-    e.target.value = '' // permette ri-selezione dello stesso file
     const exif = await readExifData(file)
     setExifData(exif)
     const reader = new FileReader()
@@ -324,11 +325,16 @@ export default function TryPage() {
     reader.readAsDataURL(file)
   }
 
+  // Picker della hero (riceve l'evento dell'input)
+  function handleHeroFile(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permette ri-selezione dello stesso file
+    loadPhotoFile(file)
+  }
+
+  // Picker di TryChoosePhoto (riceve direttamente il File)
   function handleFile(file) {
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => { setPhotoSrc(ev.target.result); setStep('polaroid') }
-    reader.readAsDataURL(file)
+    loadPhotoFile(file)
   }
 
   async function handleConfirmPolaroid(data) {
@@ -382,7 +388,7 @@ export default function TryPage() {
       <TryCreatePolaroid
         photoSrc={photoSrc}
         exifData={exifData}
-        onBack={() => setStep('choose')}
+        onBack={() => { setStep('hero'); setPhotoSrc(null); setExifData(null) }}
         onConfirm={handleConfirmPolaroid}
       />
     )

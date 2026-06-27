@@ -5,18 +5,41 @@ const BG    = '#f0ebe0'
 const DARK  = '#1a120a'
 const SUB   = '#5a4030'
 
+// ── Proporzioni foto polaroid ────────────────────────────────────────────────
+// Base = formato verticale (portrait). Il formato orizzontale è la STESSA foto
+// ruotata idealmente di 90°: larghezza e altezza si scambiano. Quindi il lato
+// lungo dell'orizzontale (LANDSCAPE_PHOTO_W) coincide con l'altezza della
+// verticale (PORTRAIT_PHOTO_H). Niente valori "a occhio": tutto derivato da qui.
+const PORTRAIT_PHOTO_W  = 216
+const PORTRAIT_PHOTO_H  = 248
+const LANDSCAPE_PHOTO_W = PORTRAIT_PHOTO_H   // 248 — lato lungo = altezza verticale
+const LANDSCAPE_PHOTO_H = PORTRAIT_PHOTO_W   // 216
+
 const PHOTO_RATIO = {
-  vertical:   '216 / 248',
-  horizontal: '272 / 248',
+  vertical:   `${PORTRAIT_PHOTO_W} / ${PORTRAIT_PHOTO_H}`,   // 216 / 248 (portrait)
+  horizontal: `${LANDSCAPE_PHOTO_W} / ${LANDSCAPE_PHOTO_H}`, // 248 / 216 (landscape)
 }
-const FRAME = 8
-const CAP_H = 32
+
+// Cornice polaroid: bordo superiore + laterali sottili, bordo inferiore più
+// spesso (ci vanno luogo/data/categoria). Il bordo spesso resta SEMPRE in basso,
+// anche in orizzontale — non ruota lateralmente.
+const FRAME = 8    // bordo superiore + laterali (sottile)
+const CAP_H = 32   // bordo inferiore — fascia caption (più spessa)
 
 const CATEGORIES = [
   'Viaggio','Natura','Mare','Montagna','Città',
   'Monumenti','Cultura','Arte','Cibo','Eventi',
   'Persone','Sport','Altro',
 ]
+
+// Coordinata valida: presente, finita, NON 0,0 (null island) e dentro i range
+// geografici. 0,0 e null vanno trattati come "posizione non trovata".
+function isValidCoord(lat, lng) {
+  return lat != null && lng != null &&
+         Number.isFinite(lat) && Number.isFinite(lng) &&
+         !(lat === 0 && lng === 0) &&
+         Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+}
 
 function GridOverlay() {
   return (
@@ -60,6 +83,9 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
   const [category,    setCategory]    = useState('Altro') // B: default "Altro" sempre selezionato
   const [geo,         setGeo]         = useState(null)
   const [geoState,    setGeoState]    = useState('idle')
+  // sorgente del geo corrente: 'exif' = letto dai metadata foto, 'manual' = scelto
+  // dall'utente (ricerca/selezione). Serve solo per il messaggio, non per la logica.
+  const [geoSource,   setGeoSource]   = useState(null)
   const [suggestions, setSuggestions] = useState([])
   const [showSugg,    setShowSugg]    = useState(false)
   const debounceRef   = useRef(null)
@@ -72,7 +98,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
     if (!exifData) return
     if (exifData.date) setVisitDate(exifData.date)
 
-    if (exifData.lat != null && exifData.lng != null) {
+    if (isValidCoord(exifData.lat, exifData.lng)) {
       const lat4 = exifData.lat.toFixed(4)
       const lng4 = exifData.lng.toFixed(4)
       console.log('REVERSE GEOCODE START', lat4, lng4)
@@ -80,6 +106,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
       // Imposta subito geo + coordinate come placeholder → CTA già abilitata
       setGeo({ lat: exifData.lat, lng: exifData.lng })
       setGeoState('found')
+      setGeoSource('exif')
       skipSearch.current += 1          // la prossima modifica a placeName viene da qui
       setPlaceName(`${lat4}, ${lng4}`)
 
@@ -102,6 +129,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
             setPlaceName(name.trim())
             setGeo({ lat: exifData.lat, lng: exifData.lng }) // mantieni geo corretto
             setGeoState('found')
+            setGeoSource('exif')
           }
         })
         .catch(e => console.log('REVERSE GEOCODE ERROR', String(e)))
@@ -110,7 +138,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
 
   useEffect(() => {
     const q = placeName.trim()
-    if (!q) { setGeo(null); setGeoState('idle'); setSuggestions([]); return }
+    if (!q) { setGeo(null); setGeoState('idle'); setGeoSource(null); setSuggestions([]); return }
     // Skip: nome impostato automaticamente da EXIF (non input utente)
     if (skipSearch.current > 0) { skipSearch.current -= 1; return }
     clearTimeout(debounceRef.current)
@@ -126,8 +154,9 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
           setSuggestions(data); setShowSugg(true)
           setGeo({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) })
           setGeoState('found')
-        } else { setSuggestions([]); setGeo(null); setGeoState('notfound') }
-      } catch { setGeoState('notfound') }
+          setGeoSource('manual')
+        } else { setSuggestions([]); setGeo(null); setGeoState('notfound'); setGeoSource(null) }
+      } catch { setGeoState('notfound'); setGeoSource(null) }
     }, 600)
     return () => clearTimeout(debounceRef.current)
   }, [placeName])
@@ -135,22 +164,27 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
   function selectSuggestion(item) {
     setPlaceName(item.display_name.split(',')[0].trim())
     setGeo({ lat: parseFloat(item.lat), lng: parseFloat(item.lon) })
-    setGeoState('found'); setSuggestions([]); setShowSugg(false)
+    setGeoState('found'); setGeoSource('manual'); setSuggestions([]); setShowSugg(false)
   }
 
+  const hasValidGeo = isValidCoord(geo?.lat, geo?.lng)
+
   function handleConfirm() {
+    // Mai salvare 0,0 o coordinate invalide: se la posizione non è valida
+    // la conferma è bloccata a monte (canConfirm), ma resta il null-guard.
     onConfirm({
       place_name: placeName.trim() || 'Il mio posto',
-      lat: geo?.lat ?? null, lng: geo?.lng ?? null,
+      lat: hasValidGeo ? geo.lat : null,
+      lng: hasValidGeo ? geo.lng : null,
       visit_date: visitDate || null,
       category: category || null,
       orientation, photo_src: photoSrc,
     })
   }
 
-  // C: location opzionale — CTA attiva appena la foto è caricata
-  // place_name ha fallback 'Il mio posto' in handleConfirm
-  const canConfirm  = !!photoSrc
+  // Serve una posizione VALIDA per confermare: se non viene trovata, l'utente
+  // deve selezionarla manualmente. Non si posiziona mai il ricordo a 0,0.
+  const canConfirm  = !!photoSrc && hasValidGeo
   const captionText = placeName.trim() || 'Il tuo posto'
 
   return (
@@ -304,7 +338,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
               {geoState === 'found' && geo ? (
                 <>
                   <p style={{ fontFamily:'sans-serif', fontSize:9, fontWeight:700, color:AMBER, margin:'0 0 2px', letterSpacing:'0.03em' }}>
-                    ✨ Rilevato automaticamente
+                    {geoSource === 'exif' ? '✨ Rilevato automaticamente' : '✓ Luogo impostato'}
                   </p>
                   <p style={{ fontFamily:'sans-serif', fontSize:9, color:SUB, margin:'0 0 4px', lineHeight:1.4, opacity:0.8 }}>
                     Posizionato sul wall in base al luogo.
@@ -314,7 +348,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
                   </p>
                   <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
                     <button style={geoBtn}>✓ Conferma</button>
-                    <button onClick={() => { setPlaceName(''); setGeo(null); setGeoState('idle') }}
+                    <button onClick={() => { setPlaceName(''); setGeo(null); setGeoState('idle'); setGeoSource(null) }}
                       style={{ ...geoBtn, background:'transparent', color:SUB, border:'1px solid #d4c4b0', fontSize:8 }}>
                       Modifica manualmente
                     </button>
@@ -323,12 +357,12 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
               ) : geoState === 'loading' ? (
                 <p style={{ fontFamily:'sans-serif', fontSize:10, color:SUB, margin:0 }}>Ricerca posizione…</p>
               ) : geoState === 'notfound' ? (
-                <p style={{ fontFamily:'sans-serif', fontSize:10, color:'#c07050', margin:0 }}>
-                  Non trovato — posizionato manualmente
+                <p style={{ fontFamily:'sans-serif', fontSize:9, color:SUB, margin:0, lineHeight:1.4 }}>
+                  Non l'abbiamo trovato. Prova con città, monumento, stato o indirizzo.
                 </p>
               ) : (
-                <p style={{ fontFamily:'sans-serif', fontSize:9, color:SUB, margin:0, opacity:0.7, lineHeight:1.4 }}>
-                  Digita il luogo per la geolocalizzazione automatica
+                <p style={{ fontFamily:'sans-serif', fontSize:9, color:SUB, margin:0, opacity:0.85, lineHeight:1.4 }}>
+                  Luogo non trovato automaticamente.<br/>Scrivi dove è stata scattata la foto.
                 </p>
               )}
             </div>
