@@ -356,9 +356,16 @@ export default function TryPage() {
 
     // 3. Salva in localStorage
     const result = addGuestTrip(trip)
-    if (!result.ok) console.warn('Guest limit raggiunto — trip non salvato')
 
-    // 4. Avvia WOW
+    // CASO B — limite 3/3 GIÀ raggiunto: il ricordo NON è stato salvato.
+    // Niente WOW, niente "Nuovo ricordo aggiunto": vai al Wall (invariato) con
+    // l'overlay del limite.
+    if (!result.ok) {
+      navigate('/', { state: { limitReached: true } })
+      return
+    }
+
+    // 4. Avvia WOW (CASO A/normale: ricordo salvato)
     setTripData(trip)
     setStep('wow')
   }
@@ -400,12 +407,16 @@ export default function TryPage() {
   // NON mostriamo l'header di TryPage per evitare duplicazioni.
   if (step === 'hero') {
     return (
-      <div style={{ height: '100dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ height: '100dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', background: '#f0ebe0' }}>
       <div style={{ position: 'relative', width: '100%', background: '#f0ebe0' }}>
         <img
           src="/assets/try-landing-final.png"
           alt="BeenThere — Your travel. Your map. Your wall."
-          style={{ width: '100%', display: 'block' }}
+          // aspectRatio riserva l'altezza dell'immagine PRIMA che il bitmap
+          // carichi → il bottone assoluto (top:57%) è posizionato subito, anche
+          // al primissimo avvio. Evita il "primo tocco a vuoto" (layout shift).
+          width={853} height={1844}
+          style={{ width: '100%', height: 'auto', aspectRatio: '853 / 1844', display: 'block' }}
           draggable={false}
         />
 

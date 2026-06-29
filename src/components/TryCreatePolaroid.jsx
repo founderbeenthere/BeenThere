@@ -32,6 +32,13 @@ const CATEGORIES = [
   'Persone','Sport','Altro',
 ]
 
+// Base del geocoder. Il Nominatim pubblico VIETA l'autocomplete "as-you-type" e
+// lo rate-limita per IP → sul device reale i luoghi spesso non vengono trovati.
+// Per la beta va sostituito con un provider che permette l'autocomplete (es.
+// LocationIQ, compatibile con Nominatim): basta cambiare questa base e aggiungere
+// &key=... alle due fetch sotto. I dati/ranking restano gli stessi (OSM).
+const GEOCODER_BASE = 'https://nominatim.openstreetmap.org'
+
 // Coordinata valida: presente, finita, NON 0,0 (null island) e dentro i range
 // geografici. 0,0 e null vanno trattati come "posizione non trovata".
 function isValidCoord(lat, lng) {
@@ -39,6 +46,46 @@ function isValidCoord(lat, lng) {
          Number.isFinite(lat) && Number.isFinite(lng) &&
          !(lat === 0 && lng === 0) &&
          Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+}
+
+// Suggerisce una categoria dai campi class/type di Nominatim (geocode).
+// SOLO un suggerimento: l'utente può sempre cambiare. "Altro" è l'ultimo
+// fallback → ritorna null se non c'è un match sicuro (la categoria resta com'è).
+// NB: questo copre il caso in cui un luogo viene risolto (GPS o ricerca testo).
+// Il riconoscimento del landmark dalla SOLA foto (vision AI) è separato e non
+// implementato in questo sprint (richiede provider + consenso privacy).
+function suggestCategoryFrom(item) {
+  if (!item) return null
+  const cls  = String(item.class || item.category || '').toLowerCase()
+  const type = String(item.type  || '').toLowerCase()
+
+  // Monumenti — storico, luoghi di culto, castelli, rovine, memoriali…
+  if (cls === 'historic') return 'Monumenti'
+  if (['monument','memorial','castle','fort','ruins','archaeological_site','city_gate','tower'].includes(type)) return 'Monumenti'
+  if (['place_of_worship','cathedral','church','chapel','mosque','temple','synagogue','shrine'].includes(type)) return 'Monumenti'
+  // Cultura / Arte
+  if (['museum','gallery','arts_centre','theatre','library','cinema'].includes(type)) return 'Cultura'
+  if (type === 'artwork') return 'Arte'
+  // Natura / Montagna / Mare
+  if (cls === 'natural') {
+    if (['peak','volcano','glacier','ridge','cliff','cave_entrance'].includes(type)) return 'Montagna'
+    if (['beach','bay','cape','reef','coastline','water','shoal'].includes(type)) return 'Mare'
+    return 'Natura'
+  }
+  if (type === 'beach') return 'Mare'
+  if (['mountain_range','massif'].includes(type)) return 'Montagna'
+  // Cibo
+  if (cls === 'amenity' && ['restaurant','cafe','bar','pub','fast_food','ice_cream','food_court'].includes(type)) return 'Cibo'
+  // Sport / tempo libero
+  if (cls === 'leisure' || cls === 'sport' || type === 'stadium' || type === 'sports_centre') return 'Sport'
+  // Eventi
+  if (['theme_park','attraction'].includes(type) && cls === 'tourism') return 'Eventi'
+  // Città / centri abitati
+  if (cls === 'place' && ['city','town','village','suburb','hamlet','neighbourhood','quarter'].includes(type)) return 'Città'
+  // Turismo generico → Cultura (meglio di "Altro")
+  if (cls === 'tourism') return 'Cultura'
+
+  return null // nessun match certo → resta com'è ("Altro" come ultimo fallback)
 }
 
 function GridOverlay() {
@@ -89,9 +136,19 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
   const [suggestions, setSuggestions] = useState([])
   const [showSugg,    setShowSugg]    = useState(false)
   const debounceRef   = useRef(null)
+  const abortRef      = useRef(null)   // annulla la fetch in volo (anti out-of-order + meno rate-limit)
+  const placeInputRef = useRef(null)   // per il focus automatico quando il luogo non è trovato
   // skipSearch: quante volte il search-effect deve ignorare il cambio di placeName
   // (usato quando il nome viene impostato automaticamente da EXIF, non dall'utente)
   const skipSearch    = useRef(0)
+  // L'utente ha scelto la categoria a mano? Se sì, il suggerimento non sovrascrive.
+  const categoryTouched = useRef(false)
+  // Applica un suggerimento di categoria solo se l'utente non l'ha già toccata.
+  function suggestCategory(item) {
+    if (categoryTouched.current) return
+    const c = suggestCategoryFrom(item)
+    if (c) setCategory(c)
+  }
 
   // A: pre-compila Data e Luogo da EXIF GPS
   useEffect(() => {
@@ -112,7 +169,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
 
       // Reverse geocode in background → sostituisce con nome leggibile
       fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${exifData.lat}&lon=${exifData.lng}&format=json`,
+        `${GEOCODER_BASE}/reverse?lat=${exifData.lat}&lon=${exifData.lng}&format=json&addressdetails=1&zoom=18`,
         { headers: { 'Accept-Language': 'it,en' } }
       )
         .then(r => r.json())
@@ -130,6 +187,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
             setGeo({ lat: exifData.lat, lng: exifData.lng }) // mantieni geo corretto
             setGeoState('found')
             setGeoSource('exif')
+            suggestCategory(data)      // suggerisce categoria dal luogo (non impone)
           }
         })
         .catch(e => console.log('REVERSE GEOCODE ERROR', String(e)))
@@ -144,27 +202,49 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
     clearTimeout(debounceRef.current)
     setGeoState('loading')
     debounceRef.current = setTimeout(async () => {
+      abortRef.current?.abort()                 // annulla la richiesta precedente
+      const ctrl = new AbortController()
+      abortRef.current = ctrl
       try {
         const res  = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=4`,
-          { headers: { 'Accept-Language': 'it,en' } },
+          `${GEOCODER_BASE}/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=5`,
+          { headers: { 'Accept-Language': 'it,en' }, signal: ctrl.signal },
         )
         const data = await res.json()
-        if (data.length > 0) {
+        if (Array.isArray(data) && data.length > 0) {
           setSuggestions(data); setShowSugg(true)
           setGeo({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) })
           setGeoState('found')
           setGeoSource('manual')
+          // Per la categoria preferisci il primo risultato che mappa a qualcosa
+          // (il landmark) invece di data[0] che a volte è una strada omonima.
+          suggestCategory(data.find(it => suggestCategoryFrom(it)) || data[0])
         } else { setSuggestions([]); setGeo(null); setGeoState('notfound'); setGeoSource(null) }
-      } catch { setGeoState('notfound'); setGeoSource(null) }
+      } catch (e) {
+        if (e.name !== 'AbortError') { setGeoState('notfound'); setGeoSource(null) }
+      }
     }, 600)
     return () => clearTimeout(debounceRef.current)
   }, [placeName])
+
+  // #4 — quando il luogo non è trovato, riporta il focus sul campo Luogo così
+  // l'utente può correggere subito (non si sente bloccato).
+  useEffect(() => {
+    if (geoState === 'notfound') placeInputRef.current?.focus()
+  }, [geoState])
+
+  // Cleanup su unmount: annulla fetch in volo + debounce → niente setState dopo
+  // unmount, niente richieste orfane.
+  useEffect(() => () => {
+    abortRef.current?.abort()
+    clearTimeout(debounceRef.current)
+  }, [])
 
   function selectSuggestion(item) {
     setPlaceName(item.display_name.split(',')[0].trim())
     setGeo({ lat: parseFloat(item.lat), lng: parseFloat(item.lon) })
     setGeoState('found'); setGeoSource('manual'); setSuggestions([]); setShowSugg(false)
+    suggestCategory(item)   // suggerisce categoria dalla scelta (non impone)
   }
 
   const hasValidGeo = isValidCoord(geo?.lat, geo?.lng)
@@ -268,6 +348,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
               <div style={{ padding:'10px 12px', borderBottom:'1px solid #f0e8d8' }}>
                 <label style={labelStyle}>Luogo</label>
                 <input
+                  ref={placeInputRef}
                   type="text" placeholder="es. Pisa, Italia"
                   value={placeName}
                   onChange={e => { setPlaceName(e.target.value); setShowSugg(true) }}
@@ -294,7 +375,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
               {/* Categoria */}
               <div style={{ padding:'10px 12px' }}>
                 <label style={labelStyle}>Categoria</label>
-                <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inputStyle, cursor:'pointer', appearance:'auto' }}>
+                <select value={category} onChange={e => { categoryTouched.current = true; setCategory(e.target.value) }} style={{ ...inputStyle, cursor:'pointer', appearance:'auto' }}>
 
                   {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>

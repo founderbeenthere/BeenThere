@@ -5,9 +5,19 @@ import GuestWall         from '../components/GuestWall'
 import MicroCelebration  from '../components/MicroCelebration'
 import AddTripModal      from '../components/AddTripModal'
 import LoginModal        from './LoginModal'
+import ShareSheet        from '../components/ShareSheet'
+import LimitOverlay      from '../components/LimitOverlay'
 import { useTrips } from '../hooks/useTrips'
 import { geoToPercent } from '../utils/geo'
-import { getGuestTrips } from '../hooks/useGuestTrips'
+import { getGuestTrips, GUEST_LIMIT } from '../hooks/useGuestTrips'
+
+// ── Intent preservation (Sprint 4) ───────────────────────────────────────────
+// Il magic-link fa lasciare l'app (email) e tornare in una nuova sessione: per
+// "tornare al flusso di condivisione" dopo il login l'intento va persistito.
+const PENDING_KEY = 'beenthere_pending_intent'
+const setPendingIntent   = v => { try { localStorage.setItem(PENDING_KEY, v) } catch { /* private mode */ } }
+const getPendingIntent   = () => { try { return localStorage.getItem(PENDING_KEY) } catch { return null } }
+const clearPendingIntent = () => { try { localStorage.removeItem(PENDING_KEY) } catch { /* private mode */ } }
 
 // Tenuto come fallback tecnico — non usato per lo stato TRY
 const DEMO_TRIPS = [
@@ -21,8 +31,15 @@ export default function MapPage({ user, signInWithEmail, onSignOut }) {
   const { trips, loading, addTrip, deleteTrip } = useTrips()
   const [showModal,       setShowModal]       = useState(false)
   const [showLogin,       setShowLogin]       = useState(false)
+  const [showShare,       setShowShare]       = useState(false)
   const [lastAddedTripId, setLastAddedTripId] = useState(null)
   const location = useLocation()
+
+  // Trigger account: persiste l'intento ("share" | "save") e apre il LoginModal.
+  function triggerAccount(intent) {
+    setPendingIntent(intent)
+    setShowLogin(true)
+  }
 
   // Guest trips da localStorage — normalizzati con map_x/map_y/photo_url per Polaroid
   const rawGuest   = (!user) ? getGuestTrips() : []
@@ -35,17 +52,36 @@ export default function MapPage({ user, signInWithEmail, onSignOut }) {
   // Nessun side-effect qui: window.history.replaceState è in useEffect.
   const [celebrateTrip] = useState(() => {
     if (!user && location.state?.celebrate) {
-      return guestTrips.find(t => t.id === location.state.tripId) ?? guestTrips[0] ?? null
+      // SOLO il trip realmente salvato con questo id. Se non c'è (es. limite 3
+      // raggiunto → non salvato), NON ripiegare su un trip vecchio: niente
+      // celebrazione del ricordo sbagliato.
+      return guestTrips.find(t => t.id === location.state.tripId) ?? null
     }
     return null
   })
 
+  // CASO B — il Guest era già a 3/3 e ha tentato un nuovo ricordo: TryPage ci
+  // manda qui con limitReached → mostra subito l'overlay limite (Wall invariato).
+  const [showLimit, setShowLimit] = useState(() => !user && !!location.state?.limitReached)
+
   // Pulisce lo state dalla history DOPO il mount → no overlay su refresh
   useEffect(() => {
-    if (celebrateTrip) {
+    if (celebrateTrip || showLimit) {
       window.history.replaceState({}, '', window.location.pathname)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Resume intento dopo login: se l'utente è autenticato e aveva un intento
+  // pendente ("Condividi"/"Salva"), riprende il flusso. 'share' → ShareSheet;
+  // 'save' → resta sul Wall (in questo sprint nessun salvataggio cloud reale).
+  useEffect(() => {
+    if (!user) return
+    const intent = getPendingIntent()
+    if (!intent) return
+    clearPendingIntent()
+    if (intent === 'share') setShowShare(true)
+  }, [user])
 
   // ── Non autenticato — routing per stato TRY ─────────────────────────────────
   // Nessun ricordo: /try è la vera landing → redirect diretto (no double-landing)
@@ -59,12 +95,34 @@ export default function MapPage({ user, signInWithEmail, onSignOut }) {
       <>
         <GuestWall
           guestTrips={guestTrips}
-          onSaveClick={() => console.log('save memories clicked')}
+          onSaveClick={() => triggerAccount('save')}
+          lastAddedTripId={celebrateTrip?.id ?? guestTrips[guestTrips.length - 1]?.id}
         />
         {celebrateTrip && (
           <MicroCelebration
             trip={celebrateTrip}
-            onDismiss={() => {}}
+            // CASO A — appena la celebrazione si chiude, se il Guest è ora a 3/3
+            // mostra l'overlay del limite. Conteggio fresco da localStorage.
+            onDismiss={() => { if (getGuestTrips().length >= GUEST_LIMIT) setShowLimit(true) }}
+            onShare={() => triggerAccount('share')}
+          />
+        )}
+        {showLimit && (
+          <LimitOverlay
+            onCreateAccount={() => { setShowLimit(false); triggerAccount('continue') }}
+            onClose={() => setShowLimit(false)}
+          />
+        )}
+        {showLogin && (
+          <LoginModal
+            signInWithEmail={signInWithEmail}
+            onClose={() => setShowLogin(false)}
+          />
+        )}
+        {showShare && (
+          <ShareSheet
+            trip={celebrateTrip ?? guestTrips[guestTrips.length - 1]}
+            onClose={() => setShowShare(false)}
           />
         )}
       </>
@@ -151,6 +209,13 @@ export default function MapPage({ user, signInWithEmail, onSignOut }) {
         <LoginModal
           signInWithEmail={signInWithEmail}
           onClose={() => setShowLogin(false)}
+        />
+      )}
+
+      {showShare && (
+        <ShareSheet
+          trip={trips?.[0]}
+          onClose={() => setShowShare(false)}
         />
       )}
 

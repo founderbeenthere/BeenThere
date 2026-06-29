@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'beenthere_guest_trips'
-const GUEST_LIMIT = 3
+export const GUEST_LIMIT = 3
 
 function readFromStorage() {
   try {

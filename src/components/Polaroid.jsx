@@ -13,7 +13,7 @@ function rotation(id) {
   return direction * magnitude
 }
 
-export default function Polaroid({ trip, onSelect }) {
+export default function Polaroid({ trip, onSelect, isNew = false }) {
   const rot = rotation(trip.id)
 
   return (
@@ -23,7 +23,8 @@ export default function Polaroid({ trip, onSelect }) {
         position: 'absolute',
         left: `${trip.map_x}%`,
         top:  `${trip.map_y}%`,
-        zIndex: 20,
+        // l'ultima/nuova polaroid sempre sopra tutte, anche con ricordi vicini
+        zIndex: isNew ? 35 : 20,
         pointerEvents: 'none',
       }}
     >
@@ -39,11 +40,13 @@ export default function Polaroid({ trip, onSelect }) {
             width:  CARD_W,
             height: CARD_H,
             background: '#fff',
-            boxShadow: '2px 4px 10px rgba(0,0,0,0.30)',
+            boxShadow: isNew ? '3px 7px 20px rgba(0,0,0,0.45)' : '2px 4px 10px rgba(0,0,0,0.30)',
             boxSizing: 'border-box',
             padding: `${FRAME}px ${FRAME}px 0`,
             cursor: 'pointer',
             pointerEvents: 'auto',
+            // animazione discreta solo per l'ultima polaroid aggiunta (keyframe globale in GuestWall)
+            animation: isNew ? 'bt-wall-pop 1.4s cubic-bezier(0.34,1.4,0.64,1) both' : undefined,
           }}
           onClick={e => { e.stopPropagation(); onSelect?.(trip) }}
         >

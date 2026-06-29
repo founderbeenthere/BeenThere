@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const AMBER = '#C47820'
 const DARK  = '#1a120a'
@@ -22,39 +22,40 @@ const GoldPin = () => (
 
 const DISMISS_AFTER = 4  // secondi
 
-export default function MicroCelebration({ trip, onDismiss }) {
+export default function MicroCelebration({ trip, onDismiss, onShare }) {
   const [visible,   setVisible]   = useState(true)
   const [countdown, setCountdown] = useState(DISMISS_AFTER)
-  const [copied,    setCopied]    = useState(false)
 
-  // Countdown + auto-dismiss
+  // onDismiss via ref: l'effetto countdown NON deve dipendere da onDismiss (che
+  // è una closure ricreata a ogni render del genitore), altrimenti l'intervallo
+  // si resetta di continuo e la celebrazione non si auto-dismette mai.
+  const onDismissRef = useRef(onDismiss)
+  onDismissRef.current = onDismiss
+
+  // Countdown — l'updater è PURO (solo decremento), nessun side-effect.
   useEffect(() => {
     if (!visible) return
-    const tick = setInterval(() => {
-      setCountdown(c => {
-        if (c <= 1) { clearInterval(tick); setVisible(false); onDismiss?.(); return 0 }
-        return c - 1
-      })
-    }, 1000)
+    const tick = setInterval(() => setCountdown(c => Math.max(0, c - 1)), 1000)
     return () => clearInterval(tick)
-  }, [visible, onDismiss])
+  }, [visible])
+
+  // Auto-dismiss quando il countdown arriva a 0 — in un effetto separato, così
+  // onDismiss (che aggiorna MapPage) NON viene chiamato durante un render.
+  useEffect(() => {
+    if (visible && countdown === 0) {
+      setVisible(false)
+      onDismissRef.current?.()
+    }
+  }, [visible, countdown])
 
   if (!visible) return null
 
-  async function handleShare() {
-    const url  = `${window.location.origin}/try`
-    const text = trip?.place_name
-      ? `Ho aggiunto ${trip.place_name} al mio wall BeenThere!`
-      : 'Guarda il mio wall su BeenThere!'
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: 'BeenThere', text, url })
-      } else {
-        await navigator.clipboard.writeText(url)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      }
-    } catch { /* cancelled */ }
+  // Condividi: chiude la celebrazione e delega al contenitore (MapPage), che
+  // decide se Guest → trigger account o autenticato → schermata di condivisione.
+  // Il Guest NON condivide socialmente senza account (niente navigator.share qui).
+  function handleShare() {
+    setVisible(false)
+    onShare?.()
   }
 
   function handleContinua() {
@@ -189,7 +190,7 @@ export default function MicroCelebration({ trip, onDismiss }) {
         {/* Pulsanti */}
         <div style={{ display:'flex', gap:10, marginBottom:12 }}>
           <button onClick={handleShare} style={btnSecondary}>
-            {copied ? '✓ Link copiato' : 'Condividi'}
+            Condividi
           </button>
           <button onClick={handleContinua} style={btnPrimary}>
             Continua
