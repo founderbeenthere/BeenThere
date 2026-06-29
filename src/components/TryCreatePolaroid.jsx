@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { recognizePhoto } from '../lib/vision'
 
 const AMBER = '#C47820'
 const BG    = '#f0ebe0'
@@ -141,13 +142,25 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
   // skipSearch: quante volte il search-effect deve ignorare il cambio di placeName
   // (usato quando il nome viene impostato automaticamente da EXIF, non dall'utente)
   const skipSearch    = useRef(0)
-  // L'utente ha scelto la categoria a mano? Se sì, il suggerimento non sovrascrive.
-  const categoryTouched = useRef(false)
-  // Applica un suggerimento di categoria solo se l'utente non l'ha già toccata.
+  // specchio di placeName → la callback Vision asincrona legge il valore CORRENTE
+  // (l'utente può aver digitato mentre l'AI era in volo).
+  const placeNameRef  = useRef(placeName)
+  placeNameRef.current = placeName
+  // Priorità sorgente categoria: manuale > vision > geocoding > default.
+  // Una sorgente scrive la categoria solo se ha rango ≥ di quella corrente →
+  // la scelta MANUALE vince sempre; Vision sta sopra il geocoding.
+  const CAT_RANK = { default: 0, geocoding: 1, vision: 2, manual: 3 }
+  const categorySource = useRef('default')
+  function setCategoryFrom(value, source) {
+    if (!value) return
+    if (CAT_RANK[source] < CAT_RANK[categorySource.current]) return
+    categorySource.current = source
+    setCategory(value)
+  }
+  // Suggerimento da geocoding (class/type Nominatim) — non impone (rango basso).
   function suggestCategory(item) {
-    if (categoryTouched.current) return
     const c = suggestCategoryFrom(item)
-    if (c) setCategory(c)
+    if (c) setCategoryFrom(c, 'geocoding')
   }
 
   // A: pre-compila Data e Luogo da EXIF GPS
@@ -239,6 +252,38 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
     abortRef.current?.abort()
     clearTimeout(debounceRef.current)
   }, [])
+
+  // ── Vision Layer (Sprint 3C) — chiamata ASINCRONA in background ──────────────
+  // L'utente non aspetta mai: nessun blocco UI, nessun popup/toast, nessun errore
+  // visibile. null/timeout/errore → non succede assolutamente nulla.
+  useEffect(() => {
+    if (!photoSrc) return
+    const hasGps = isValidCoord(exifData?.lat, exifData?.lng)
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 7000)
+    recognizePhoto({
+      dataURL: photoSrc,
+      hasGps,
+      context: hasGps ? { lat: exifData.lat, lng: exifData.lng } : null,
+      signal: ctrl.signal,
+    })
+      .then(res => {
+        if (!res) return
+        // Categoria: pre-compila il selettore solo a confidence alta (decision
+        // 'auto'), rispettando la priorità (non sovrascrive la scelta manuale).
+        if (res.category?.decision === 'auto' && res.category.value) {
+          setCategoryFrom(res.category.value, 'vision')
+        }
+        // Luogo: SOLO senza GPS, solo se il campo è ancora vuoto (suggerimento
+        // removibile). Settare placeName fa partire il geocoding esistente → pin.
+        if (!hasGps && res.place?.decision === 'auto' && res.place.name && !placeNameRef.current.trim()) {
+          setPlaceName(res.place.name)
+        }
+      })
+      .catch(() => { /* silenzioso */ })
+    return () => { clearTimeout(timer); ctrl.abort() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoSrc])
 
   function selectSuggestion(item) {
     setPlaceName(item.display_name.split(',')[0].trim())
@@ -375,7 +420,7 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
               {/* Categoria */}
               <div style={{ padding:'10px 12px' }}>
                 <label style={labelStyle}>Categoria</label>
-                <select value={category} onChange={e => { categoryTouched.current = true; setCategory(e.target.value) }} style={{ ...inputStyle, cursor:'pointer', appearance:'auto' }}>
+                <select value={category} onChange={e => setCategoryFrom(e.target.value, 'manual')} style={{ ...inputStyle, cursor:'pointer', appearance:'auto' }}>
 
                   {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
