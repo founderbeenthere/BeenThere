@@ -53,8 +53,10 @@ try {
   console.log(`HTTP ${res.status}  (${ms}ms)  hasGps=${hasGps}`)
   console.log(JSON.stringify(body, null, 2))
   console.log(shapeOk ? '\n✓ Risposta DENTRO il contratto' : '\n✗ Risposta FUORI contratto (controlla)')
-  process.exit(shapeOk ? 0 : 1)
+  // NB: process.exitCode (non process.exit) per evitare l'assertion libuv di Node
+  // su Windows quando si forza l'uscita con socket fetch ancora in chiusura.
+  process.exitCode = shapeOk ? 0 : 1
 } catch (e) {
   console.error('Errore di rete verso la funzione:', String(e))
-  process.exit(1)
+  process.exitCode = 1
 }

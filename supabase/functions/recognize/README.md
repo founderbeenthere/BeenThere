@@ -31,10 +31,10 @@ luogo col GPS); categoria vincolata all'enum (mai inventata); `decision` ∈
 | Var | Default | Note |
 |---|---|---|
 | `GEMINI_API_KEY` | — | **obbligatorio**. Se assente → degrada (nessun suggerimento). |
-| `VISION_MODEL` | `gemini-2.0-flash` | |
+| `VISION_MODEL` | `gemini-2.5-flash` | Flash multimodale con quota free-tier. NB: `gemini-2.0-flash` può avere quota 0 e `gemini-1.5-flash` non è più disponibile su alcune key. |
 | `VISION_CONF_HIGH` | `0.90` | soglia "auto" |
 | `VISION_CONF_MED` | `0.90` | soglia "verify". **v1 = high → verify disattivata** (medio = niente). |
-| `VISION_TIMEOUT_MS` | `4500` | timeout verso il provider |
+| `VISION_TIMEOUT_MS` | `9000` | timeout verso il provider. `gemini-2.5-flash` su scene complesse supera spesso i 4.5s; sotto i 9s aborta e degrada. La chiamata è in background → l'utente non aspetta comunque. |
 
 `supabase secrets set GEMINI_API_KEY=...`
 

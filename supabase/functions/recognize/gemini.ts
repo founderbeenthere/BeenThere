@@ -25,20 +25,20 @@ const SYSTEM = [
 
 // Output strutturato (Gemini responseSchema) → JSON sempre valido, parsing sicuro.
 const RESPONSE_SCHEMA = {
-  type: "object",
+  type: "OBJECT",
   properties: {
-    subject: { type: "string", nullable: true },
-    category: { type: "string", nullable: true },
-    categoryConfidence: { type: "number" },
+    subject: { type: "STRING", nullable: true },
+    category: { type: "STRING", nullable: true },
+    categoryConfidence: { type: "NUMBER" },
     place: {
-      type: "object",
+      type: "OBJECT",
       nullable: true,
       properties: {
-        name: { type: "string", nullable: true },
-        country: { type: "string", nullable: true },
-        lat: { type: "number", nullable: true },
-        lng: { type: "number", nullable: true },
-        confidence: { type: "number" },
+        name: { type: "STRING", nullable: true },
+        country: { type: "STRING", nullable: true },
+        lat: { type: "NUMBER", nullable: true },
+        lng: { type: "NUMBER", nullable: true },
+        confidence: { type: "NUMBER" },
       },
     },
   },
@@ -76,11 +76,18 @@ export async function geminiRecognize(
     body: JSON.stringify(body),
     signal: cfg.signal,
   })
-  if (!res.ok) throw new Error(`gemini http ${res.status}`)
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => "")
+    throw new Error(`gemini http ${res.status}: ${errBody.slice(0, 400)}`)
+  }
 
   const data = await res.json()
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error("gemini empty response")
+  const cand = data?.candidates?.[0]
+  const text = cand?.content?.parts?.[0]?.text
+  if (!text) {
+    const reason = cand?.finishReason ?? data?.promptFeedback?.blockReason ?? "no_text"
+    throw new Error(`gemini empty response (finishReason=${reason})`)
+  }
 
   const p = JSON.parse(text) as Record<string, any>
   return {

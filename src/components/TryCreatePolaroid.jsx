@@ -260,7 +260,9 @@ export default function TryCreatePolaroid({ photoSrc, exifData, onBack, onConfir
     if (!photoSrc) return
     const hasGps = isValidCoord(exifData?.lat, exifData?.lng)
     const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 7000)
+    // 12s: ≥ timeout server (9s). gemini-2.5-flash su scene complesse supera i 4-5s
+    // e la chiamata è in background (l'utente non aspetta), quindi diamo margine.
+    const timer = setTimeout(() => ctrl.abort(), 12000)
     recognizePhoto({
       dataURL: photoSrc,
       hasGps,

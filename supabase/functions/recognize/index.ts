@@ -15,9 +15,9 @@ import { geminiRecognize } from "./gemini.ts"
 import { parseRequest, splitImage, normalize, emptyResponse, type Thresholds } from "./core.ts"
 
 const PROVIDER = "gemini-flash"
-const MODEL = Deno.env.get("VISION_MODEL") ?? "gemini-2.0-flash"
+const MODEL = Deno.env.get("VISION_MODEL") ?? "gemini-2.5-flash"
 const API_KEY = Deno.env.get("GEMINI_API_KEY") ?? ""
-const TIMEOUT_MS = Number(Deno.env.get("VISION_TIMEOUT_MS") ?? "4500")
+const TIMEOUT_MS = Number(Deno.env.get("VISION_TIMEOUT_MS") ?? "9000")
 
 // Soglie come CONFIG server-side (tarabili in beta via telemetria, non definitive).
 // v1 conservativa: med = high → niente banda "verify" (medio = nessun suggerimento).
@@ -58,7 +58,10 @@ Deno.serve(async (req: Request) => {
       { apiKey: API_KEY, model: MODEL, signal: ctrl.signal },
     )
     return json(normalize(raw, { provider: PROVIDER, hasGps: reqv.hasGps, thresholds: THRESHOLDS }))
-  } catch (_err) {
+  } catch (err) {
+    // Log server-side per ops (mai la key). Il client riceve solo "nessun
+    // suggerimento" → degradazione silenziosa, l'app non si rompe mai.
+    console.error("[recognize] vision fail:", String(err))
     return json(emptyResponse(PROVIDER))
   } finally {
     clearTimeout(timer)
