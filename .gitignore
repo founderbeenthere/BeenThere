@@ -32,5 +32,8 @@ make-icons.mjs
 screenshot.mjs
 screenshot.png
 
-# Claude Code local settings
-.claude/settings.local.json
+# Claude Code (local tooling)
+.claude/
+
+# Supabase CLI temp
+supabase/.temp/
